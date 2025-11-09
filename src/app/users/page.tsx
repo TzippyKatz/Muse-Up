@@ -1,5 +1,3 @@
-// src/app/users/page.tsx
-
 type User = {
   _id: string;
   username: string;
@@ -18,7 +16,7 @@ type User = {
 };
 
 async function getUsers(): Promise<User[]> {
-  const res = await fetch("http://localhost:3000/api/Users", {
+  const res = await fetch("http://localhost:3000/api/users", {
     cache: "no-store",
   });
 
@@ -91,3 +89,5 @@ export default async function UsersPage() {
     </main>
   );
 }
+
+export const dynamic = "force-dynamic";
