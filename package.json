@@ -11,7 +11,6 @@
   "dependencies": {
     "cloudinary": "^2.8.0",
     "dotenv": "^16.6.1",
-    "mogoose": "^0.0.1-security",
     "mongodb": "^6.9.0",
     "mongoose": "^8.19.3",
     "next": "16.0.1",

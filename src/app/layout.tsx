@@ -1,5 +1,4 @@
 import "./globals.css";
-import AppHeader from "./components/Header/Header";
 import Sidebar from "./components/Sidebar/Sidebar";
 import Footer from "./components/Footer/Footer";
 import type { ReactNode } from "react";
@@ -15,21 +14,23 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           background: "#f6f8fb",
           color: "#121826",
           margin: 0,
-          fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial",
+          fontFamily:
+            "system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial",
         }}
       >
-        <Sidebar active="home" />
+        {/* Sidebar קבוע, ינהל גם ריווח תוכן דרך CSS variable */}
+        <Sidebar />
 
+        {/* התוכן הראשי – מקבל padding-right מה־:root שמוגדר ב-Sidebar */}
         <div
           style={{
             display: "grid",
-            gridTemplateRows: "64px 1fr auto",
-            gridTemplateAreas: `"header" "main" "footer"`,
+            gridTemplateRows: "1fr auto",
+            gridTemplateAreas: `"main" "footer"`,
             minHeight: "100vh",
-            paddingRight: "88px",
+            paddingRight: "var(--sidebar-space, 24px)",
           }}
         >
-          <AppHeader />
           <main style={{ gridArea: "main", padding: 16 }}>{children}</main>
           <Footer />
         </div>
