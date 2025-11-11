@@ -1,3 +1,4 @@
+import Link from "next/link";
 import styles from "./Footer.module.css";
 
 export default function Footer() {
@@ -6,7 +7,7 @@ export default function Footer() {
       <div>© {new Date().getFullYear()} MuseUp. All rights reserved.</div>
 
       <nav className={styles.links} aria-label="Footer links">
-        <a href="#">About</a>
+        <Link href="/about">About</Link>
         <a href="#">Help</a>
         <a href="#">Guidelines</a>
         <a href="#">Privacy</a>
