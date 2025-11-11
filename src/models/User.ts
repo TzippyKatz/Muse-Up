@@ -35,7 +35,7 @@ const UserSchema = new Schema<IUser>(
   { timestamps: { createdAt: "created_at", updatedAt: "updated_at" } }
 );
 
-// מונע OverwriteModelError ונותן טיפוס חזק
+
 const UserModel =
   (models.User as Model<IUser>) || model<IUser>("User", UserSchema);
 
