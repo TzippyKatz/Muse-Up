@@ -4,15 +4,15 @@
   --panel:#fff;
   --stroke:#e6e8ef;
 
-  /* אנימציית reveal – איטית וברורה */
-  --rev-dur: 1s;      /* משך לכל פריט */
-  --rev-gap: .28s;    /* סטאגר בין פריטים */
+  /* Reveal – איטי וברור יותר */
+  --rev-dur: 1.4s;
+  --rev-gap: .35s;
 }
 
 .panel{
   max-width: 1100px;
   margin: 32px auto;
-  background: var(--panel);
+  background: linear-gradient(180deg, #ffffff 0%, #f7faff 100%);
   border: 1px solid var(--stroke);
   border-radius: 12px;
   padding: 28px 24px;
@@ -20,30 +20,29 @@
 
 .layout{
   display:grid;
-  grid-template-columns: 1.55fr 16px 1fr; /* שמאל רחב, קו, ימין */
+  grid-template-columns: 1.55fr 16px 1fr;
   gap: 18px;
   align-items:start;
 }
 
-/* ===== שמאל ===== */
-
 .left{ padding: 6px 8px; }
 
+/* טיפוגרפיה */
 .hero h1{
   text-align:center;
-  font-size: 30px;
+  font-size: 36px;
   line-height: 1.2;
   font-weight: 800;
   letter-spacing:.2px;
   margin: 4px 0 12px;
-  color: var(--ink);
+  color: #0f172a;
 }
-
 .hero p{
   text-align:center;
-  color: var(--muted);
+  color: #4b5563;
   margin: 0 auto 28px;
   max-width: 62ch;
+  font-size: 17px;
 }
 
 .tasks h2{
@@ -58,14 +57,15 @@
   gap: 28px; text-align:center;
 }
 
-.taskCard{
-  padding: 8px 10px;
-}
+.taskCard{ padding: 8px 10px; }
 .taskCard strong{ display:block; margin-top:8px }
 .taskCard small{ display:block; color:var(--muted) }
 
-/* אייקונים כמו במוקאפ (אימוג'י, גדול וצבע) */
-.ico{ font-size: 30px; line-height:1 }
+/* אייקונים “תלת־ממד” קל */
+.ico{
+  font-size: 32px; line-height:1;
+  filter: drop-shadow(0 3px 4px rgba(0,0,0,0.15));
+}
 .ico.heart{ color:#ff5d5d }
 .ico.bolt{ color:#ffcc45 }
 .ico.star{ color:#16c092 }
@@ -84,31 +84,35 @@
   outline:3px solid #fff; box-shadow:0 1px 0 rgba(0,0,0,.04);
 }
 .teamGrid li b{ display:block }
-.teamGrid li small{ display:block; color:#8a93a6 }
+.teamGrid li small{ display:block; color:#9ca3af; font-size:14px }
 
-/* ===== קו מפריד (עם קצוות עגולים כמו במוקאפ) ===== */
-.divider{
-  position:relative; width:16px; align-self:stretch;
-}
+/* קו אנכי עם קצוות עגולים */
+.divider{ position:relative; width:16px; align-self:stretch; }
 .divider::before{
   content:""; position:absolute; left:7px; top:0; bottom:0;
   width:2px; background:#cfd5e5; border-radius:999px;
 }
 
-/* ===== ימין ===== */
-
+/* צד ימין */
 .right{ position:relative; padding: 0 8px }
 
+/* CTA עם Glow */
 .cta{
   position:absolute; right: 4px; top: -6px;
   height: 42px; padding:0 20px;
-  border:1px solid #1f3f86; border-radius:10px;
-  background:#2f76ff; color:#fff; cursor:pointer;
-  font-weight:600;
-  box-shadow: 0 2px 0 rgba(0,0,0,.06);
+  border: none; border-radius:10px;
+  background: linear-gradient(90deg, #3b82f6 0%, #2563eb 100%);
+  color:#fff; cursor:pointer; font-weight:600;
+  box-shadow: 0 6px 14px rgba(59,130,246,0.30);
+  transition: transform .18s ease, box-shadow .18s ease, filter .3s ease;
 }
-.cta:hover{ background:#1f64ee }
+.cta:hover{
+  transform: translateY(-2px);
+  box-shadow: 0 10px 22px rgba(59,130,246,0.35);
+  filter: brightness(1.08);
+}
 
+/* איור + פרלאקס עדין */
 .illustration{
   margin-top: 64px;
   height: 210px;
@@ -116,23 +120,32 @@
   border-radius:12px;
   background:#f6f8ff;
 }
+.parallax{
+  will-change: transform;
+  transition: transform .4s ease-out;
+}
 
 .stats{ margin-top: 18px }
 .stats h4{ margin:0 0 12px; font-size:22px }
-.stats ul{
-  list-style:none; margin:0; padding:0; display:grid; gap:12px;
-}
-.stats li{
-  display:flex; align-items:center; gap:10px; color:#333;
-}
-.pip{
-  width:12px; height:12px; border-radius:50%; display:inline-block;
-}
+.stats ul{ list-style:none; margin:0; padding:0; display:grid; gap:12px; }
+.stats li{ display:flex; align-items:center; gap:10px; color:#333; }
+.pip{ width:12px; height:12px; border-radius:50%; display:inline-block; }
 .orange{ background:#ffa84b }
-.green{ background:#19c37d }
-.red{ background:#ff5d5d }
+.green{  background:#19c37d }
+.red{    background:#ff5d5d }
 
-/* ===== Reveal (איטי ומודגש) ===== */
+/* תמונת צוות אמיתית */
+.avatarImg{
+  width:72px; height:72px; border-radius:50%;
+  object-fit:cover;
+  outline:3px solid #fff;
+  box-shadow:0 1px 0 rgba(0,0,0,.04);
+  display:inline-block;
+  background:#d9dcee;
+  margin-bottom:6px;
+}
+
+/* Reveal */
 .reveal{
   opacity:0; transform: translateY(18px);
   animation: rise var(--rev-dur) cubic-bezier(.2,.8,.25,1) forwards;
