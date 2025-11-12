@@ -40,8 +40,8 @@ export default function AuthForm({ mode }: { mode: "login" | "register" }) {
 
         const error = validatePassword(password);
         setPasswordErrors(error);
-        if (error) return;
-
+        if (error.length > 0) return;
+        
         try {
             if (mode === "login") {
                 await signInWithEmailAndPassword(auth, email, password);
@@ -159,8 +159,7 @@ export default function AuthForm({ mode }: { mode: "login" | "register" }) {
                     <button
                         type="submit"
                         className={styles.primaryBtn}
-                        disabled={!!passwordErrors || !email || !password}
-                    >
+                        disabled={passwordErrors.length > 0 || !email || !password}                    >
                         {mode === "login" ? "Log in" : "Create Account"}
                     </button>
                 </form>
