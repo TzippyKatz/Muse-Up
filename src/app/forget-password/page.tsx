@@ -8,17 +8,44 @@ import { Mail } from "lucide-react";
 
 export default function ForgetPasswordPage() {
   const [email, setEmail] = useState("");
+  const [emailError, setEmailError] = useState<string | null>(null);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+
+  const validateEmail = (value: string): string | null => {
+    if (!value) return "Email is required.";
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(value)) return "Please enter a valid email address.";
+    return null;
+  };
+
+  const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setEmail(value);
+
+    if (!value) {
+      setEmailError(null);
+      return;
+    }
+
+    setEmailError(validateEmail(value));
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setMessage("");
     setError("");
 
+    const emailValidation = validateEmail(email);
+    if (emailValidation) {
+      setEmailError(emailValidation);
+      return;
+    }
+
     try {
       await sendPasswordResetEmail(auth, email);
-      alert("We sent you an email to reset your password.");
+      setMessage("We sent you an email to reset your password.");
+      setEmail("");
     } catch (err: any) {
       setError("Failed to send reset email.");
       console.error(err);
@@ -38,28 +65,29 @@ export default function ForgetPasswordPage() {
             Email address
             <div className={styles.inputWrapper}>
               <span className={styles.inputIconLeft}>
-                <Mail size={16} color="#9CA3AF" />
+                <Mail size={16} color="#000000ff" />
               </span>
 
               <input
                 type="email"
                 placeholder="email@address.com"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={handleEmailChange}
                 className={styles.input}
                 required
               />
             </div>
+            {emailError && <div className={styles.error}>{emailError}</div>}
           </label>
 
-          <button onClick={handleSubmit}>Reset Password</button>
+          <button type="submit">Reset Password</button>
         </form>
 
         {message && <p className={`${styles.message} ${styles.success}`}>{message}</p>}
         {error && <p className={`${styles.message} ${styles.error}`}>{error}</p>}
 
         <a href="/login" className={styles.backLink}>
-          Go back to Sign In
+          Go back to Log In
         </a>
       </div>
     </div>
