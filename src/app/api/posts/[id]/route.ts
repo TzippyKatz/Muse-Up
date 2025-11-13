@@ -1,5 +1,3 @@
-
-
 export const runtime = "nodejs";
 
 import { dbConnect } from "../../../../lib/mongoose";
