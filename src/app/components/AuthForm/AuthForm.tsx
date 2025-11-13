@@ -6,17 +6,41 @@ import {
     signInWithEmailAndPassword,
     createUserWithEmailAndPassword,
     signInWithPopup,
+    fetchSignInMethodsForEmail,
 } from "firebase/auth";
 import Link from "next/link";
 import styles from "./AuthForm.module.css";
 import { Mail, Lock, Eye, EyeOff } from "lucide-react";
 import getAuthErrorMessage from "../../../lib/authErrors";
+import { on } from "events";
 
 export default function AuthForm({ mode }: { mode: "login" | "register" }) {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [showPassword, setShowPassword] = useState(false);
+    const [emailError, setEmailError] = useState<string | null>(null);
     const [passwordErrors, setPasswordErrors] = useState<string[]>([]);
+
+
+    const validateEmail = (value: string): string | null => {
+        if (!value) return "Email is required.";
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(value)) return "Please enter a valid email address.";
+        return null;
+    };
+
+    const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const value = e.target.value;
+        // if (!value) return "";
+
+        setEmail(value);
+
+        if (!value) {
+            setEmailError(null);
+            return;
+        }
+        setEmailError(validateEmail(value));
+    };
 
     const validatePassword = (value: string): string[] => {
         const errors: string[] = [];
@@ -38,15 +62,26 @@ export default function AuthForm({ mode }: { mode: "login" | "register" }) {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
-        const error = validatePassword(password);
-        setPasswordErrors(error);
-        if (error.length > 0) return;
-        
+        const emailError = validateEmail(email);
+        const passwordError = validatePassword(password);
+
+        setEmailError(emailError);
+        setPasswordErrors(passwordError);
+
+        if (emailError || passwordError.length > 0) return;
+
         try {
             if (mode === "login") {
                 await signInWithEmailAndPassword(auth, email, password);
-                alert("login successfully!");
+                alert("Login successfully!");
             } else {
+                if (mode === "register") {
+                    const methods = await fetchSignInMethodsForEmail(auth, email);
+                    if (methods.length > 0) {
+                        alert("This email is already registered. Please log in instead.");
+                        return;
+                    }
+                }
                 await createUserWithEmailAndPassword(auth, email, password);
                 alert("register successfully!");
             }
@@ -80,7 +115,7 @@ export default function AuthForm({ mode }: { mode: "login" | "register" }) {
                 <img src="../" alt="Logo" className={styles.logo} />
 
                 <h2 className={styles.title}>
-                    {mode === "login" ? "Sign in" : "Create Your Account"}
+                    {mode === "login" ? "Log in" : "Sign up"}
                 </h2>
 
                 <p className={styles.subtitle}>
@@ -95,18 +130,19 @@ export default function AuthForm({ mode }: { mode: "login" | "register" }) {
                         Email address
                         <div className={styles.inputWrapper}>
                             <span className={styles.inputIconLeft}>
-                                <Mail size={16} color="#9CA3AF" />
+                                <Mail size={16} color="#000000ff" />
                             </span>
 
                             <input
                                 type="email"
                                 placeholder="email@address.com"
                                 value={email}
-                                onChange={(e) => setEmail(e.target.value)}
+                                onChange={handleEmailChange}
                                 className={styles.input}
                                 required
                             />
                         </div>
+                        {emailError && <div className={styles.error}>{emailError}</div>}
                     </label>
 
                     {/* Password */}
@@ -175,7 +211,7 @@ export default function AuthForm({ mode }: { mode: "login" | "register" }) {
                         alt="Google logo"
                     />
                     <span>
-                        {mode === "login" ? "Sign in with Google" : "Continue with Google"}
+                        {mode === "login" ? "Log in with Google" : "Continue with Google"}
                     </span>
                 </button>
 
@@ -195,7 +231,7 @@ export default function AuthForm({ mode }: { mode: "login" | "register" }) {
 
                 <p className={styles.switch}>
                     {mode === "login"
-                        ? "Don't have an account?"
+                        ? "Don't have an account? <br> Forget password?"
                         : "Already have an account?"}{" "}
                     <Link
                         href={mode === "login" ? "/register" : "/login"}
@@ -204,6 +240,17 @@ export default function AuthForm({ mode }: { mode: "login" | "register" }) {
                         {mode === "login" ? "Sign up here" : "Log in here"}
                     </Link>
                 </p>
+
+                {mode === "login" && (
+                    <p className={styles.switch}>
+                        <Link
+                            href="/forget-password"
+                            className={styles.textLink}
+                        >
+                            Forget password?
+                        </Link>
+                    </p>
+                )}
             </div>
         </div>
     );
