@@ -25,9 +25,9 @@ export default function TrendingSection({ trending }: Props) {
         <h2 className={styles.cardTitle}>Trending this week</h2>
 
         <div className={styles.trendingGrid}>
-          {trending.map((p) => (
+          {trending.map((p, index) => (          // 👈 הוספתי index לכאן
             <div
-              key={p.id}           // ← כאן ה־key התקין! אין כלום חוץ מזה!
+              key={`${p.id}-${index}`}           // 👈 key בטוח ייחודי עכשיו
               className={styles.artCard}
               onClick={() => setSelectedPost(p)}
               style={{ cursor: "pointer" }}

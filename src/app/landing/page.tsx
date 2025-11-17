@@ -9,9 +9,7 @@ import styles from "./landingPage.module.css";
 export default async function LandingPage() {
   await dbConnect();
 
-  // ---------------------------
   // 🎨 Artists
-  // ---------------------------
   const artists = await UserModel.find(
     {},
     { _id: 0, username: 1, name: 1, artType: 1, avatarUrl: 1 }
@@ -20,28 +18,32 @@ export default async function LandingPage() {
     .limit(5)
     .lean();
 
-  // ---------------------------
-  // 🔥 Trending posts
-  // ---------------------------
+  // 🔥 Trending posts – שמים לב שהוספנו body
   const trendingRaw = await (PostModel as any)
     .find(
       {},
-      { _id: 0, id: 1, title: 1, image_url: 1, likes_count: 1 }
+      {
+        _id: 0,
+        id: 1,
+        title: 1,
+        image_url: 1,
+        likes_count: 1,
+        body: 1,          // 👈 חדש – התוכן של הפוסט מהיצירה
+      }
     )
     .sort({ likes_count: -1 })
     .limit(6)
     .lean();
 
+  // מעבירים את האובייקטים כמו שהם (כולל body)
   const trending = trendingRaw.map((p: any) => ({
     id: p.id,
     title: p.title,
     image_url: p.image_url,
     likes_count: p.likes_count,
+    body: p.body,        // 👈 חדש – כדי שיגיע עד המודאל
   }));
 
-  // ---------------------------
-  // JSX
-  // ---------------------------
   return (
     <main className={styles.page}>
       <div className={styles.container}>
@@ -70,7 +72,6 @@ export default async function LandingPage() {
 
               <div className={styles.card}>
                 <h2 className={styles.cardTitle}>Artists to follow</h2>
-
                 <ul className={styles.artistList}>
                   {artists.map((a: any) => (
                     <li key={a.username} className={styles.artistRow}>
@@ -86,7 +87,6 @@ export default async function LandingPage() {
                           className={styles.avatar}
                         />
                       </div>
-
                       <div className={styles.artistInfo}>
                         <div className={styles.artistName}>
                           {a?.name ?? a?.username}
@@ -95,12 +95,10 @@ export default async function LandingPage() {
                           {a?.artType ?? "Artist"}
                         </div>
                       </div>
-
                       <button className={styles.followBtn}>Follow</button>
                     </li>
                   ))}
                 </ul>
-
                 <Link href="/artists" className={styles.moreLink}>
                   See more artists →
                 </Link>
