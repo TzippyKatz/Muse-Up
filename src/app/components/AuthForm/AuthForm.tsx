@@ -1,20 +1,25 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation"; // חשוב!! לא "next/router"
 import { auth, provider } from "../../../lib/firebase";
 import {
     signInWithEmailAndPassword,
     createUserWithEmailAndPassword,
     signInWithPopup,
     fetchSignInMethodsForEmail,
+    getAdditionalUserInfo,
+    signOut,
 } from "firebase/auth";
 import Link from "next/link";
 import styles from "./AuthForm.module.css";
 import { Mail, Lock, Eye, EyeOff } from "lucide-react";
 import getAuthErrorMessage from "../../../lib/authErrors";
-import { on } from "events";
+import { checkUserInDB } from "../../../lib/checkUserInDB";
+
 
 export default function AuthForm({ mode }: { mode: "login" | "register" }) {
+    const router = useRouter();
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [showPassword, setShowPassword] = useState(false);
@@ -32,7 +37,6 @@ export default function AuthForm({ mode }: { mode: "login" | "register" }) {
     const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const value = e.target.value;
         // if (!value) return "";
-
         setEmail(value);
 
         if (!value) {
@@ -73,6 +77,7 @@ export default function AuthForm({ mode }: { mode: "login" | "register" }) {
         try {
             if (mode === "login") {
                 await signInWithEmailAndPassword(auth, email, password);
+                router.push("/landing");
                 alert("Login successfully!");
             } else {
                 if (mode === "register") {
@@ -83,6 +88,7 @@ export default function AuthForm({ mode }: { mode: "login" | "register" }) {
                     }
                 }
                 await createUserWithEmailAndPassword(auth, email, password);
+                router.push("/onboarding");
                 alert("register successfully!");
             }
         } catch (err: any) {
@@ -91,18 +97,43 @@ export default function AuthForm({ mode }: { mode: "login" | "register" }) {
         }
     };
 
-    const handleGoogle = async () => {
+    const handleGoogle = async (mode: "login" | "register") => {
         try {
-            await signInWithPopup(auth, provider)
-                .then((result) => {
-                    const user = result.user;
-                    let profil_URL = user.photoURL;
-                    console.log(profil_URL);
-                });
-            alert("login successfully with Google!");
+            const result = await signInWithPopup(auth, provider);
+            const user = result.user;
+
+            if (!user.email) {
+                alert("Could not retrieve Google email.");
+                await signOut(auth);
+                return;
+            }
+            const email = user.email;
+            console.log("User email from Google:", email);
+
+            const userExists = await checkUserInDB(email);
+            console.log("User exists in DB:", userExists);
+
+            if (mode === "login" && !userExists) {
+                alert("No account found with this email. Please sign up first.");
+                await signOut(auth);
+                return;
+            }
+
+            if (mode === "register" && userExists) {
+                alert("Account already exists. Please log in instead.");
+                await signOut(auth);
+                return;
+            }
+
+            if (mode === "register") {
+                router.push("/onboarding");
+            } else {
+                router.push("/landing");
+            }
+
         } catch (err: any) {
-            const msg = getAuthErrorMessage(err, mode);
-            alert(msg);
+            console.error("Google authentication failed:", err);
+            alert("Google authentication failed. Try again.");
         }
     };
 
@@ -204,7 +235,7 @@ export default function AuthForm({ mode }: { mode: "login" | "register" }) {
                     <span>Or</span>
                 </div>
 
-                <button onClick={handleGoogle} className={styles.googleBtn}>
+                <button onClick={() => { handleGoogle(mode) }} className={styles.googleBtn}>
                     <img
                         className={styles.googleIcon}
                         src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
