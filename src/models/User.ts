@@ -1,10 +1,11 @@
-import { Schema, model, models, Model } from "mongoose";
+import { Schema, model, models, Document, Model } from "mongoose";
 
-export interface IUser {
-  username: string;
-  name?: string;
+// Define the IUser interface extending Document for TypeScript types in route
+interface IUser extends Document {
+  firebase_uid: string;
+  name: string;
   email: string;
-  password_hash: string;
+  username: string;
   avatar_url?: string;
   bio?: string;
   location?: string;
@@ -13,16 +14,16 @@ export interface IUser {
   following_count: number;
   artworks_count: number;
   likes_received: number;
-  created_at?: Date;
-  updated_at?: Date;
+  created_at: Date;
 }
+
 
 const UserSchema = new Schema<IUser>(
   {
+    firebase_uid: { type: String, required: true, unique: true },
+    name: { type: String, required: true, trim: true },
+    email: { type: String, required: true, unique: true, trim: true, lowercase: true },
     username: { type: String, required: true, unique: true, trim: true },
-    name: String,
-    email: { type: String, required: true, unique: true, lowercase: true, trim: true },
-    password_hash: { type: String, required: true },
     avatar_url: String,
     bio: String,
     location: String,
@@ -31,14 +32,13 @@ const UserSchema = new Schema<IUser>(
     following_count: { type: Number, default: 0 },
     artworks_count: { type: Number, default: 0 },
     likes_received: { type: Number, default: 0 },
+    created_at: { type: Date, default: Date.now }
   },
-  { timestamps: { createdAt: "created_at", updatedAt: "updated_at" } }
+  {
+    timestamps: { createdAt: "created_at", updatedAt: "updated_at" }
+  }
 );
 
-const UserModel =
-  (models.User as Model<IUser>) || model<IUser>("User", UserSchema);
+const User: Model<IUser> = models.User || model<IUser>("User", UserSchema);
 
-export default UserModel;
-
-
-
+export default User;

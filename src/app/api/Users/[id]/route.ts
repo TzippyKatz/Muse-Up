@@ -11,10 +11,10 @@ type ParamsCtx = {
 
 export async function GET(_req: NextRequest, ctx: ParamsCtx) {
   try {
-    const { id } = await ctx.params;    
+    const { id } = await ctx.params;
 
     await dbConnect();
-    const user = await User.findById(id);
+    const user = await User.findOne({ firebase_uid: id });
 
     if (!user) {
       return Response.json({ message: "User not found" }, { status: 404 });
@@ -31,15 +31,15 @@ export async function GET(_req: NextRequest, ctx: ParamsCtx) {
 
 export async function PUT(req: NextRequest, ctx: ParamsCtx) {
   try {
-    const { id } = await ctx.params;      
+    const { id } = await ctx.params;
 
     await dbConnect();
     const body = await req.json();
 
-    const updated = await User.findByIdAndUpdate(
-      id,
+    const updated = await User.findOneAndUpdate(
+      { firebase_uid: id },
       { $set: body },
-      { new: true }                       
+      { new: true }
     );
 
     if (!updated) {
@@ -60,7 +60,7 @@ export async function DELETE(_req: NextRequest, ctx: ParamsCtx) {
     const { id } = await ctx.params;
 
     await dbConnect();
-    const deleted = await User.findByIdAndDelete(id);
+    const deleted = await User.findOneAndDelete({ firebase_uid: id },);
 
     if (!deleted) {
       return Response.json({ message: "User not found" }, { status: 404 });
