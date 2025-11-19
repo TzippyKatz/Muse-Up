@@ -13,27 +13,19 @@ type FollowDoc = {
   followed_user_id: string;
 };
 
-type Stats = {
-  followers: number;
-  following: number;
-};
-
-type StatsMap = Record<string, Stats>;
-
 export default function UsersClient({ initialUsers }: Props) {
+  const [users, setUsers] = useState<User[]>(initialUsers);
   const [currentUid, setCurrentUid] = useState<string | null>(null);
   const [followingIds, setFollowingIds] = useState<Set<string>>(new Set());
   const [togglingUid, setTogglingUid] = useState<string | null>(null);
-
-
-  const [stats, setStats] = useState<StatsMap>({});
 
   useEffect(() => {
     if (typeof window === "undefined") return;
 
     const fromStorage =
       window.localStorage.getItem("firebase_uid") ??
-      window.localStorage.getItem("firebaseUid") 
+      window.localStorage.getItem("firebaseUid") ??
+      window.localStorage.getItem("userId");
 
     if (fromStorage) {
       setCurrentUid(fromStorage);
@@ -43,11 +35,13 @@ export default function UsersClient({ initialUsers }: Props) {
   }, []);
 
   useEffect(() => {
-    if (!currentUid) return;
+    if (!currentUid) {
+      return;
+    }
 
     let cancelled = false;
 
-    async function loadFollowing() {
+    async function load() {
       try {
         const res = await fetch(
           `/api/follows?userId=${encodeURIComponent(
@@ -74,7 +68,7 @@ export default function UsersClient({ initialUsers }: Props) {
       }
     }
 
-    loadFollowing();
+    load();
 
     return () => {
       cancelled = true;
@@ -82,72 +76,11 @@ export default function UsersClient({ initialUsers }: Props) {
   }, [currentUid]);
 
   const usersToShow = useMemo(() => {
-    if (!currentUid) return initialUsers;
-    return initialUsers.filter(
+    if (!currentUid) return users;
+    return users.filter(
       (u) => u.firebase_uid && u.firebase_uid !== currentUid
     );
-  }, [initialUsers, currentUid]);
-
-
-  useEffect(() => {
-    if (!usersToShow.length) return;
-
-    let cancelled = false;
-
-    async function loadStats() {
-      const entries: [string, Stats][] = [];
-
-      for (const u of usersToShow) {
-        const uid = u.firebase_uid;
-        if (!uid) continue;
-
-        try {
-          const [followersRes, followingRes] = await Promise.all([
-            fetch(
-              `/api/follows?userId=${encodeURIComponent(
-                uid
-              )}&type=followers`
-            ),
-            fetch(
-              `/api/follows?userId=${encodeURIComponent(
-                uid
-              )}&type=following`
-            ),
-          ]);
-
-          if (!followersRes.ok || !followingRes.ok) {
-            continue;
-          }
-
-          const followers: FollowDoc[] = await followersRes.json();
-          const following: FollowDoc[] = await followingRes.json();
-
-          entries.push([
-            uid,
-            {
-              followers: followers.length,
-              following: following.length,
-            },
-          ]);
-        } catch (err) {
-          console.error("Failed to load stats for user", u.username, err);
-        }
-      }
-
-      if (!cancelled && entries.length) {
-        setStats((prev) => ({
-          ...prev,
-          ...Object.fromEntries(entries),
-        }));
-      }
-    }
-
-    loadStats();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [usersToShow]);
+  }, [users, currentUid]);
 
   const handleToggleFollow = async (targetUid: string) => {
     if (!currentUid || currentUid === targetUid) return;
@@ -184,36 +117,33 @@ export default function UsersClient({ initialUsers }: Props) {
         return next;
       });
 
-      setStats((prev) => {
-        const next: StatsMap = { ...prev };
+      setUsers((prev) =>
+        prev.map((u) => {
+          if (u.firebase_uid === targetUid) {
+            const delta = isAlreadyFollowing ? -1 : 1;
+            return {
+              ...u,
+              followers_count: Math.max(
+                0,
+                (u.followers_count ?? 0) + delta
+              ),
+            };
+          }
 
-       
-        const targetStats: Stats = {
-          followers: next[targetUid]?.followers ?? 0,
-          following: next[targetUid]?.following ?? 0,
-        };
+          if (u.firebase_uid === currentUid) {
+            const delta = isAlreadyFollowing ? -1 : 1;
+            return {
+              ...u,
+              following_count: Math.max(
+                0,
+                (u.following_count ?? 0) + delta
+              ),
+            };
+          }
 
-       
-        const currentStats: Stats = {
-          followers: next[currentUid]?.followers ?? 0,
-          following: next[currentUid]?.following ?? 0,
-        };
-
-        if (isAlreadyFollowing) {
-         
-          targetStats.followers = Math.max(0, targetStats.followers - 1);
-          currentStats.following = Math.max(0, currentStats.following - 1);
-        } else {
-       
-          targetStats.followers += 1;
-          currentStats.following += 1;
-        }
-
-        next[targetUid] = targetStats;
-        next[currentUid] = currentStats;
-
-        return next;
-      });
+          return u;
+        })
+      );
     } catch (err) {
       console.error("Failed to toggle follow", err);
     } finally {
@@ -232,15 +162,10 @@ export default function UsersClient({ initialUsers }: Props) {
         const targetUid = u.firebase_uid;
         const isFollowing = targetUid ? followingIds.has(targetUid) : false;
 
-        const userStats = targetUid ? stats[targetUid] : undefined;
-        const followersCount = userStats?.followers ?? u.followers_count ?? 0;
-        const followingCount = userStats?.following ?? u.following_count ?? 0;
-
         return (
           <li key={u._id} className={styles.card}>
             <div className={styles.avatarWrapper}>
               {avatarSrc ? (
-              
                 <img
                   src={avatarSrc}
                   alt={u.username}
@@ -270,16 +195,14 @@ export default function UsersClient({ initialUsers }: Props) {
               <div className={styles.statsRow}>
                 <div className={styles.statItem}>
                   <span className={styles.statLabel}>Followers</span>
-                  <span className={styles.statValue}>{followersCount}</span>
+                  <span className={styles.statValue}>
+                    {u.followers_count ?? 0}
+                  </span>
                 </div>
                 <div className={styles.statItem}>
                   <span className={styles.statLabel}>Following</span>
-                  <span className={styles.statValue}>{followingCount}</span>
-                </div>
-                <div className={styles.statItem}>
-                  <span className={styles.statLabel}>Likes</span>
                   <span className={styles.statValue}>
-                    {u.likes_received ?? 0}
+                    {u.following_count ?? 0}
                   </span>
                 </div>
               </div>

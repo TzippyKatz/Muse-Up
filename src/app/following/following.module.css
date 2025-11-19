@@ -1,141 +1,125 @@
-.page {
+/* עוטף כללי של העמוד */
+.container {
   padding: 40px 60px 40px 40px;
 }
 
-.heading {
+.title {
   font-size: 32px;
   font-weight: 700;
   margin-bottom: 30px;
 }
 
-.grid {
+/* גריד של הכרטיסים */
+.cards {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 32px;
+  gap: 24px;
 }
 
 @media (max-width: 1100px) {
-  .grid {
+  .cards {
     grid-template-columns: repeat(2, 1fr);
   }
 }
 
 @media (max-width: 700px) {
-  .grid {
+  .cards {
     grid-template-columns: repeat(1, 1fr);
   }
 }
 
+/* כרטיס בודד */
 .card {
   background: #ffffff;
   border-radius: 18px;
-  overflow: hidden;
   border: 1px solid #e5e5e5;
   box-shadow: 0 3px 12px rgba(0, 0, 0, 0.06);
+  padding: 16px 20px;
   display: flex;
-  flex-direction: column;
+  align-items: center;
+  gap: 16px;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
 .card:hover {
-  transform: translateY(-4px);
+  transform: translateY(-3px);
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.1);
 }
 
-.thumb {
-  position: relative;
-  width: 100%;
-  padding-top: 100%;
+/* אווטאר */
+.avatarWrapper {
+  flex-shrink: 0;
 }
 
-.thumb img {
-  object-fit: cover !important;
+.avatar {
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid #f0f0f0;
 }
 
-.content {
-  padding: 18px 20px;
-  text-align: center;
+/* מידע טקסטואלי */
+.info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
-.title {
-  font-size: 20px;
+.nameRow {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.name {
+  font-size: 18px;
   font-weight: 600;
-  margin-bottom: 6px;
 }
 
-.desc {
+.username {
   font-size: 14px;
-  color: #666;
-  margin-bottom: 6px;
-}
-
-.location {
-  font-size: 13px;
   color: #888;
-  margin-bottom: 18px;
 }
 
-.unfollowBtn {
-  display: inline-block;
-  margin: 0 auto 18px auto;
-  padding: 8px 26px;
+.bio {
   font-size: 14px;
-  border-radius: 10px;
-  border: 1px solid #555;
-  background: #f7f7f7;
-  cursor: pointer;
-  transition: background 0.15s ease, transform 0.1s ease;
+  color: #555;
 }
 
-.unfollowBtn:hover {
-  background: #ececec;
+/* כפתור */
+.actions {
+  flex-shrink: 0;
 }
-/* כפתור Follow (כחול) */
-.followBtn {
-  padding: 10px 24px;
+
+.button {
+  padding: 8px 20px;
+  border-radius: 100px;
   border: none;
-  border-radius: 10px;
-  background: #007bff;
+  background: linear-gradient(135deg, #007bff, #5a8dff);
   color: #fff;
-  font-size: 15px;
+  font-size: 14px;
+  font-weight: 500;
   cursor: pointer;
-  transition: 0.2s ease;
+  white-space: nowrap;
+  transition: background 0.2s ease, transform 0.1s ease,
+    box-shadow 0.2s ease;
 }
 
-.followBtn:hover {
-  background: #005fcc;
+.button:hover {
+  background: linear-gradient(135deg, #005fcc, #466dff);
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.15);
+  transform: translateY(-1px);
 }
 
-/* כפתור Unfollow (אפור עם hover אדום) */
-.unfollowBtn {
-  padding: 10px 24px;
-  border-radius: 10px;
+/* מצב שכבר עוקבים – Unfollow */
+.buttonFollowing {
   background: #eaeaea;
   color: #333;
   border: 1px solid #d0d0d0;
-  font-size: 15px;
-  cursor: pointer;
-  transition: 0.2s ease;
 }
 
-.unfollowBtn:hover {
+.buttonFollowing:hover {
   background: #ffdddd;
   color: #c70000;
   border-color: #c70000;
-}
-
-/* כפתור Follow Back (כחול טורקיז) */
-.followBackBtn {
-  padding: 10px 24px;
-  border-radius: 10px;
-  background: #00b7a8;
-  color: #fff;
-  border: none;
-  font-size: 15px;
-  cursor: pointer;
-  transition: 0.2s ease;
-}
-
-.followBackBtn:hover {
-  background: #009687;
 }
