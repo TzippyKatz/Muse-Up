@@ -109,6 +109,7 @@ export default async function LandingPage() {
                   ))}
                 </ul>
 
+                <Link href="/users" className={styles.moreLink}>
                 <Link href="/artists" className={styles.moreLink}>
                   See more artists →
                 </Link>
