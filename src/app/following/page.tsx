@@ -4,146 +4,142 @@ import { useEffect, useState } from "react";
 import Image from "next/image";
 import styles from "./following.module.css";
 
-type FollowingUser = {
+type UserSummary = {
   _id: string;
-  id: number;
-  username: string;
   name: string;
-  email: string;
-  profil_url: string;
-  bio: string;
-  location: string;
-  role: string;
+  username: string;
+  profil_url?: string;
+  bio?: string;
 };
 
 export default function FollowingPage() {
-  const [users, setUsers] = useState<FollowingUser[]>([]);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [followingUsers, setFollowingUsers] = useState<UserSummary[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [currentUserId, setCurrentUserId] = useState<number | null>(null);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
 
-    const stored = localStorage.getItem("firebase_uid");
-    if (!stored) {
-      setCurrentUserId(null);
-      setLoading(false); 
-      return;
-    }
+    const firebaseUid = window.localStorage.getItem("firebase_uid");
+    const legacyId = window.localStorage.getItem("userId");
 
-    const num = Number(stored);
-    if (Number.isNaN(num)) {
-      setCurrentUserId(null);
+    const idToUse = firebaseUid ?? legacyId;
+
+    if (idToUse) {
+      setCurrentUserId(idToUse);
+    } else {
       setLoading(false);
-      return;
     }
-
-    setCurrentUserId(num);
   }, []);
 
-
   useEffect(() => {
-    if (currentUserId == null) return;
+    if (!currentUserId) return;
 
-    const fetchData = async () => {
+    const fetchFollowing = async () => {
       try {
-        setLoading(true);
-        const res = await fetch(
-          `/api/following-users?userId=${currentUserId}`
-        );
-        if (!res.ok) {
-          throw new Error("Failed to load following users");
-        }
-        const data: FollowingUser[] = await res.json();
-        setUsers(data);
-      } catch (err: any) {
-        setError(err.message || "Something went wrong");
+        const res = await fetch(`/api/following-users?userId=${currentUserId}`);
+        if (!res.ok) throw new Error("Failed to fetch following");
+        const data = await res.json();
+        setFollowingUsers(Array.isArray(data) ? data : []);
+      } catch (err) {
+        console.error("Error fetching following", err);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchData();
+    fetchFollowing();
   }, [currentUserId]);
 
-  const handleUnfollow = async (followedUserId: number) => {
 
-    setUsers((prev) => prev.filter((u) => u.id !== followedUserId));
+  const handleUnfollow = async (targetId: string) => {
+    if (!currentUserId) return;
 
     try {
-      const res = await fetch("/api/following-users", {
+      const res = await fetch("/api/followers-users", {
         method: "DELETE",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify({
-          userId: currentUserId,
-          followedUserId,
+          userId: currentUserId, 
+          followerId: targetId,  
         }),
       });
 
       if (!res.ok) {
-        throw new Error("Failed to unfollow");
+        const body = await res.json().catch(() => null);
+        console.error("Failed to unfollow", res.status, body);
+        return;
       }
+
+      setFollowingUsers((prev) => prev.filter((u) => u._id !== targetId));
     } catch (err) {
-      alert("קרתה בעיה בביטול העוקב. נסי שוב.");
+      console.error("Error in handleUnfollow", err);
     }
   };
 
   if (loading) {
-    return <div className={styles.stateText}>Loading...</div>;
-  }
-
-  if (currentUserId == null) {
     return (
-      <div className={styles.stateText}>
-        לא נמצא משתמש מחובר (userId לא קיים ב-localStorage).
+      <div className={styles.container}>
+        <h1 className={styles.title}>Following</h1>
+        <p>טוען...</p>
       </div>
     );
   }
 
-  if (error) {
-    return <div className={styles.stateText}>Error: {error}</div>;
-  }
-
-  if (users.length === 0) {
+  if (!currentUserId) {
     return (
-      <div className={styles.stateText}>
-        את עדיין לא עוקבת אחרי אף משתמש.
+      <div className={styles.container}>
+        <h1 className={styles.title}>Following</h1>
+        <p>לא נמצא משתמש מחובר.</p>
       </div>
     );
   }
 
   return (
-    <div className={styles.page}>
-      <h1 className={styles.heading}>Artists you follow</h1>
+    <div className={styles.container}>
+      <h1 className={styles.title}>Following</h1>
 
-      <div className={styles.grid}>
-        {users.map((user) => (
-          <div className={styles.card} key={user._id}>
-            <div className={styles.thumb}>
-              <Image
-                src={user.profil_url}
-                alt={user.name}
-                fill
-                sizes="300px"
-              />
+      {followingUsers.length === 0 ? (
+        <p>את לא עוקבת אחרי אף אחד כרגע.</p>
+      ) : (
+        <div className={styles.cards}>
+          {followingUsers.map((user) => (
+            <div className={styles.card} key={user._id}>
+              <div className={styles.avatarWrapper}>
+                <Image
+                  src={
+                    user.profil_url && user.profil_url.trim() !== ""
+                      ? user.profil_url
+                      : "https://res.cloudinary.com/dhxxlwa6n/image/upload/v1763545782/45d4e069425e26a062a08f62116db827_ajjxke.jpg"
+                  }
+                  alt={user.username || "user avatar"}
+                  width={72}
+                  height={72}
+                />
+              </div>
+
+              <div className={styles.info}>
+                <div className={styles.nameRow}>
+                  <span className={styles.name}>{user.name}</span>
+                  <span className={styles.username}>@{user.username}</span>
+                </div>
+                {user.bio && <p className={styles.bio}>{user.bio}</p>}
+              </div>
+
+              <div className={styles.actions}>
+                <button
+                  className={`${styles.button} ${styles.buttonFollowing}`}
+                  onClick={() => handleUnfollow(user._id)}
+                >
+                  Unfollow
+                </button>
+              </div>
             </div>
-
-            <div className={styles.content}>
-              <h3 className={styles.title}>{user.name}</h3>
-              <p className={styles.desc}>{user.bio}</p>
-              <p className={styles.location}>{user.location}</p>
-            </div>
-
-            <button
-              className={styles.unfollowBtn}
-              onClick={() => handleUnfollow(user.id)}
-            >
-              Unfollow
-            </button>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
