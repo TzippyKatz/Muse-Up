@@ -42,7 +42,7 @@ export default function AvatarCropper({ imageFile, onUpload, onCancel }: AvatarC
             onZoomChange={setZoom}
             onCropComplete={handleCropComplete}
             cropShape="round"
-            showGrid={true} // ריבועים בתוך העיגול
+            showGrid={true}
           />
         </div>
 

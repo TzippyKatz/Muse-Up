@@ -1,11 +1,12 @@
 export async function getCroppedImg(file: File, pixelCrop: any): Promise<Blob> {
   const image = await new Promise<HTMLImageElement>((resolve, reject) => {
     const img = new Image();
-    img.src = URL.createObjectURL(file);
+    img.src = URL.createObjectURL(file); //temporary URL to display in browser 
     img.onload = () => resolve(img);
     img.onerror = reject;
   });
 
+  // canvas area for cropping
   const canvas = document.createElement("canvas");
   canvas.width = pixelCrop.width;
   canvas.height = pixelCrop.height;
@@ -23,6 +24,7 @@ export async function getCroppedImg(file: File, pixelCrop: any): Promise<Blob> {
     pixelCrop.height
   );
 
+  // Promise is object taht give result in future
   return new Promise((resolve) => {
     canvas.toBlob((blob) => {
       if (blob) resolve(blob);
