@@ -1,18 +1,25 @@
 export const runtime = "nodejs";
 
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { dbConnect } from "../../../lib/mongoose";
 import PostModel from "../../../models/Post";
 import User from "../../../models/User";
 import mongoose from "mongoose";
 
-/** GET /api/posts – כל הפוסטים כולל מידע על היוצר */
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
     await dbConnect();
 
+    const { searchParams } = new URL(req.url);
+    const userId = searchParams.get("userId");
+
+    const filter: any = {};
+    if (userId) {
+      filter.user_id = userId;
+    }
+
     const posts = await (PostModel as any)
-      .find()
+      .find(filter)
       .sort({ created_at: -1 })
       .lean();
 
@@ -22,6 +29,7 @@ export async function GET() {
 
         if (post.user_id && mongoose.isValidObjectId(post.user_id)) {
           const user = await User.findById(post.user_id).lean().catch(() => null);
+
           if (user) {
             author = {
               name: user.name,
@@ -46,8 +54,7 @@ export async function GET() {
   }
 }
 
-/** POST /api/posts – יצירת פוסט חדש */
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   try {
     await dbConnect();
 
@@ -55,12 +62,12 @@ export async function POST(req: Request) {
 
     const {
       title,
+      body: content,
       image_url,
       user_id,
-      body: text,
       category,
-      tags = [],
-      visibility = "public",
+      tags,
+      visibility,
     } = body;
 
     if (!title || !image_url || !user_id) {
@@ -70,23 +77,14 @@ export async function POST(req: Request) {
       );
     }
 
-    // יצירת ID מספרי
-    const lastPost = await (PostModel as any)
-      .findOne()
-      .sort({ id: -1 })
-      .lean();
-
-    const newId = lastPost?.id ? lastPost.id + 1 : 1;
-
     const newPost = await (PostModel as any).create({
-      id: newId,
       title,
+      body: content ?? "",
       image_url,
       user_id,
-      body: text,
-      category,
-      tags,
-      visibility,
+      category: category ?? "",
+      tags: tags ?? [],
+      visibility: visibility ?? "public",
       status: "active",
       likes_count: 0,
       comments_count: 0,
