@@ -51,20 +51,19 @@ export default async function LandingPage() {
   const popular = await (PostModel as any)
     .find({}, baseSelect)
     .sort({ likes_count: -1 })
-    .limit(3)
+    .limit(2)
     .lean();
 
   const latest = await (PostModel as any)
     .find({}, baseSelect)
     .sort({ created_at: -1 })
-    .limit(3)
+    .limit(2)
     .lean();
 
 const trendingRaw = [...popular, ...latest].filter(
   (p, index, arr) => index === arr.findIndex((x) => x.id === p.id)
 );
 
-// ⭐ הוספת מידע על היוצר לכל פוסט
 const trendingWithAuthors = await Promise.all(
   trendingRaw.map(async (post: any) => {
     let author = null;
@@ -84,7 +83,6 @@ const trendingWithAuthors = await Promise.all(
         };
       }
     }
-
     return {
       ...post,
       author: author || {
@@ -95,9 +93,7 @@ const trendingWithAuthors = await Promise.all(
     };
   })
 );
-// ⭐ זה מה שיעבור ל-TrendingSection
 const trending = trendingWithAuthors;
-
   return (
     <main className={styles.page}>
       <div className={styles.container}>
