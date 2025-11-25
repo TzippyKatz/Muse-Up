@@ -1,16 +1,27 @@
 "use client";
 
-import { sendPasswordResetEmail } from "firebase/auth";
-import { useState } from "react";
+import { fetchSignInMethodsForEmail, sendPasswordResetEmail } from "firebase/auth";
+import { useEffect, useState } from "react";
 import { auth } from "../../lib/firebase";
 import styles from "./forget-password.module.css";
 import { Mail } from "lucide-react";
+
+import { onAuthStateChanged } from "firebase/auth";
 
 export default function ForgetPasswordPage() {
   const [email, setEmail] = useState("");
   const [emailError, setEmailError] = useState<string | null>(null);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+
+
+  useEffect(() => {
+    const unsub = onAuthStateChanged(auth, () => {
+      console.log("AUTH READY");
+    });
+
+    return () => unsub();
+  }, []);
 
   const validateEmail = (value: string): string | null => {
     if (!value) return "Email is required.";
@@ -22,12 +33,6 @@ export default function ForgetPasswordPage() {
   const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setEmail(value);
-
-    if (!value) {
-      setEmailError(null);
-      return;
-    }
-
     setEmailError(validateEmail(value));
   };
 
@@ -43,12 +48,31 @@ export default function ForgetPasswordPage() {
     }
 
     try {
-      await sendPasswordResetEmail(auth, email);
+      await auth.authStateReady();
+
+      const emailTrimmed = email.trim().toLowerCase();
+      const providers = await fetchSignInMethodsForEmail(auth, emailTrimmed);
+      console.log("providers:", providers);
+
+      if (providers.length === 0) {
+        console.log("auth currentUser:", auth.currentUser);
+        setError("No account found for this email.");
+        return;
+      }
+
+      if (!providers.includes("password")) {
+        setError(
+          `This account is connected via ${providers.join(", ")}. Please log in using that provider.`
+        );
+        return;
+      }
+
+      await sendPasswordResetEmail(auth, emailTrimmed);
       setMessage("We sent you an email to reset your password.");
       setEmail("");
     } catch (err: any) {
-      setError("Failed to send reset email.");
       console.error(err);
+      setError(err.message || "Failed to send reset email.");
     }
   };
 
@@ -67,7 +91,6 @@ export default function ForgetPasswordPage() {
               <span className={styles.inputIconLeft}>
                 <Mail size={16} color="#000000ff" />
               </span>
-
               <input
                 type="email"
                 placeholder="email@address.com"
@@ -80,7 +103,9 @@ export default function ForgetPasswordPage() {
             {emailError && <div className={styles.error}>{emailError}</div>}
           </label>
 
-          <button type="submit">Reset Password</button>
+          <button type="submit" className={styles.submitButton}>
+            Reset Password
+          </button>
         </form>
 
         {message && <p className={`${styles.message} ${styles.success}`}>{message}</p>}
