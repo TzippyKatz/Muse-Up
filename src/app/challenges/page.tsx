@@ -154,15 +154,44 @@ type CardProps = {
 };
 
 function ChallengeCard({ challenge, isJoined, loading, onToggle }: CardProps) {
-  const start = challenge.start_date
-    ? new Date(challenge.start_date)
-    : null;
+  const start = challenge.start_date ? new Date(challenge.start_date) : null;
   const end = challenge.end_date ? new Date(challenge.end_date) : null;
 
   const dateText =
     start && end
       ? `Starts: ${formatDate(start)} • Ends: ${formatDate(end)}`
       : "";
+  const [timeLeft, setTimeLeft] = useState<string | null>(null);
+  useEffect(() => {
+    if (!end) return;
+
+    function update() {
+      const now = Date.now();
+      const diff = end.getTime() - now;
+      if (diff <= 0) {
+        setTimeLeft(null);
+        return;
+      }
+      const totalSeconds = Math.floor(diff / 1000);
+      const days = Math.floor(totalSeconds / 86400);
+      const hours = Math.floor((totalSeconds % 86400) / 3600);
+      const minutes = Math.floor((totalSeconds % 3600) / 60);
+      let text = "";
+      if (days > 0) text = `${days}d ${hours}h`;
+      else if (hours > 0) text = `${hours}h ${minutes}m`;
+      else text = `${minutes}m`;
+
+      setTimeLeft(text);
+    }
+    update();
+    const timerId = setInterval(update, 60000); 
+
+    return () => clearInterval(timerId);
+  }, [challenge.end_date]);
+  const isActive =
+    challenge.status !== "ended" &&
+    (!end || end.getTime() > Date.now());
+
 
  return (
   <article className={styles.card}>
@@ -175,12 +204,27 @@ function ChallengeCard({ challenge, isJoined, loading, onToggle }: CardProps) {
         />
       </div>
     )}
+
     <div className={styles.cardContent}>
       <h2 className={styles.cardTitle}>{challenge.title}</h2>
-      {dateText && <p className={styles.cardDates}>{dateText}</p>}
+      {(dateText || (isActive && timeLeft)) && (
+        <div className={styles.cardMeta}>
+          {dateText && (
+            <p className={styles.cardDates}>{dateText}</p>
+          )}
+
+          {isActive && timeLeft && (
+            <span className={styles.cardTimer}>
+              ⏰ {timeLeft} left
+            </span>
+          )}
+        </div>
+      )}
+
       {challenge.description && (
         <p className={styles.cardDescription}>{challenge.description}</p>
       )}
+
       {challenge.status !== "ended" && (
         <button
           className={`${styles.joinButton} ${
@@ -200,6 +244,7 @@ function ChallengeCard({ challenge, isJoined, loading, onToggle }: CardProps) {
   </article>
 );
 }
+
 function filterByTabAndSearch(
   challenges: Challenge[],
   tab: TabKey,

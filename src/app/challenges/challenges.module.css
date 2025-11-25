@@ -188,3 +188,28 @@
   box-shadow: 0 6px 14px rgba(15, 23, 42, 0.12);
   transform: translateY(-1px);
 }
+.cardTimer {
+  font-size: 14px;
+  color: #0d0d0d;
+  margin-bottom: 8px;
+}
+.cardMeta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 4px;
+  margin-bottom: 10px;
+}
+
+.cardDates {
+  font-size: 14px;
+  color: #6b7280; 
+}
+
+.cardTimer {
+  font-size: 13px;
+  font-weight: 500;
+  color: #2563eb;
+  white-space: nowrap;
+}
