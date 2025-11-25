@@ -1,11 +1,20 @@
 "use client";
-import { useEffect, useState } from "react";
+import {
+  useEffect,
+  useState,
+  useRef,
+  ChangeEvent,
+  useMemo,
+} from "react";
 import styles from "./challenges.module.css";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useFirebaseUid } from "../../hooks/useFirebaseUid";
 import { getChallenges } from "../../services/challengesService";
 import {
   getUserJoinedChallenges,
   joinChallenge,
   leaveChallenge,
+  submitChallengeImage,
 } from "../../services/challengeSubmissionsService";
 export type Challenge = {
   _id: string;
@@ -17,76 +26,102 @@ export type Challenge = {
   start_date?: string;
   end_date?: string;
 };
+type ChallengeSubmission = {
+  _id: string;
+  challenge_id: number;
+  user_uid: string;
+  status?: string;
+  image_url?: string | null;
+};
 type TabKey = "active" | "endingSoon" | "ended";
 export default function ChallengesPage() {
-  const [challenges, setChallenges] = useState<Challenge[]>([]);
-  const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<TabKey>("active");
   const [search, setSearch] = useState("");
-  const [joinedIds, setJoinedIds] = useState<number[]>([]);
   const [joinLoadingId, setJoinLoadingId] = useState<number | null>(null);
-  useEffect(() => {
-    async function load() {
-      try {
-        setLoading(true);
-        const data = await getChallenges();
-        setChallenges(data);
-      } catch (err) {
-        console.error("Error loading challenges:", err);
-      } finally {
-        setLoading(false);
+  const queryClient = useQueryClient();
+  const { uid, ready: uidReady } = useFirebaseUid();
+  const {
+    data: challenges = [],
+    isLoading: loadingChallenges,
+    error: challengesError,
+  } = useQuery<Challenge[]>({
+    queryKey: ["challenges"],
+    queryFn: getChallenges,
+  });
+  const {
+    data: joinedSubmissions = [],
+    isLoading: loadingJoined,
+    error: joinedError,
+  } = useQuery<ChallengeSubmission[]>({
+    queryKey: ["joinedChallenges", uid],
+    queryFn: () => getUserJoinedChallenges(uid as string),
+    enabled: uidReady && !!uid,
+  });
+const { joinedIds, submittedIds } = useMemo(() => {
+    const joined: number[] = [];
+    const submitted: number[] = [];
+
+    (joinedSubmissions as ChallengeSubmission[]).forEach((s) => {
+      if (typeof s.challenge_id === "number") {
+        joined.push(s.challenge_id);
+        if (
+          (s.image_url && typeof s.image_url === "string") ||
+          s.status === "submitted"
+        ) {
+          submitted.push(s.challenge_id);
+        }
       }
-    }
-    load();
-  }, []);
-  useEffect(() => {
-    async function loadJoined() {
-      try {
-        const uid =
-          typeof window !== "undefined"
-            ? localStorage.getItem("firebase_uid")
-            : null;
-        if (!uid) return;
-        const submissions = await getUserJoinedChallenges(uid);
-        const ids = submissions
-          .map((s: any) => s.challenge_id)
-          .filter((n: any) => typeof n === "number");
-        setJoinedIds(ids);
-      } catch (err) {
-        console.error("Error loading user joined challenges:", err);
-      }
-    }
-    loadJoined();
-  }, []);
+    });
+
+    return { joinedIds: joined, submittedIds: submitted };
+  }, [joinedSubmissions]);
+
+  const joinMutation = useMutation({
+    mutationFn: (challengeId: number) =>
+      joinChallenge(challengeId, uid as string),
+    onSuccess: () => {
+      if (!uid) return;
+      queryClient.invalidateQueries({
+        queryKey: ["joinedChallenges", uid],
+      });
+    },
+  });
+
+  const leaveMutation = useMutation({
+    mutationFn: (challengeId: number) =>
+      leaveChallenge(challengeId, uid as string),
+    onSuccess: () => {
+      if (!uid) return;
+      queryClient.invalidateQueries({
+        queryKey: ["joinedChallenges", uid],
+      });
+    },
+  });
+
   const filtered = filterByTabAndSearch(challenges, tab, search);
-  async function handleToggleJoin(challengeId: number) {
-    try {
-      const uid =
-        typeof window !== "undefined"
-          ? localStorage.getItem("firebase_uid")
-          : null;
-      if (!uid) {
-        alert("You must be logged in.");
-        return;
-      }
-      setJoinLoadingId(challengeId);
-      const isJoined = joinedIds.includes(challengeId);
-      if (isJoined) {
-        await leaveChallenge(challengeId, uid);
-        setJoinedIds((prev) => prev.filter((id) => id !== challengeId));
-      } else {
-        await joinChallenge(challengeId, uid);
-        setJoinedIds((prev) =>
-          prev.includes(challengeId) ? prev : [...prev, challengeId]
-        );
-      }
-    } catch (err: any) {
-      console.error(err);
-      alert(err.message || "Failed to update challenge");
-    } finally {
-      setJoinLoadingId(null);
+
+  function handleToggleJoin(challengeId: number) {
+    if (!uid) {
+      alert("You must be logged in.");
+      return;
     }
+
+    const isJoined = joinedIds.includes(challengeId);
+    setJoinLoadingId(challengeId);
+
+    const mutation = isJoined ? leaveMutation : joinMutation;
+
+    mutation.mutate(challengeId, {
+      onError: (err: any) => {
+        console.error(err);
+        alert(err?.message || "Failed to update challenge");
+      },
+      onSettled: () => {
+        setJoinLoadingId(null);
+      },
+    });
   }
+
   return (
     <div className={styles.page}>
       <div className={styles.headerRow}>
@@ -99,6 +134,7 @@ export default function ChallengesPage() {
           onChange={(e) => setSearch(e.target.value)}
         />
       </div>
+
       <div className={styles.tabs}>
         <button
           className={`${styles.tab} ${
@@ -126,8 +162,10 @@ export default function ChallengesPage() {
         </button>
       </div>
 
-      {loading ? (
+      {loadingChallenges ? (
         <p className={styles.infoText}>Loading challenges…</p>
+      ) : challengesError ? (
+        <p className={styles.infoText}>Failed to load challenges.</p>
       ) : filtered.length === 0 ? (
         <p className={styles.infoText}>No challenges found.</p>
       ) : (
@@ -137,8 +175,10 @@ export default function ChallengesPage() {
               key={ch._id}
               challenge={ch}
               isJoined={joinedIds.includes(ch.id)}
+              isSubmitted={submittedIds.includes(ch.id)}
               loading={joinLoadingId === ch.id}
               onToggle={() => handleToggleJoin(ch.id)}
+              userUid={uid ?? null}
             />
           ))}
         </div>
@@ -146,14 +186,24 @@ export default function ChallengesPage() {
     </div>
   );
 }
+
 type CardProps = {
   challenge: Challenge;
   isJoined: boolean;
+  isSubmitted: boolean;
   loading: boolean;
   onToggle: () => void;
+  userUid: string | null;
 };
 
-function ChallengeCard({ challenge, isJoined, loading, onToggle }: CardProps) {
+function ChallengeCard({
+  challenge,
+  isJoined,
+  isSubmitted,
+  loading,
+  onToggle,
+  userUid,
+}: CardProps) {
   const start = challenge.start_date ? new Date(challenge.start_date) : null;
   const end = challenge.end_date ? new Date(challenge.end_date) : null;
 
@@ -161,7 +211,13 @@ function ChallengeCard({ challenge, isJoined, loading, onToggle }: CardProps) {
     start && end
       ? `Starts: ${formatDate(start)} • Ends: ${formatDate(end)}`
       : "";
+
   const [timeLeft, setTimeLeft] = useState<string | null>(null);
+  const [uploadMessage, setUploadMessage] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  const queryClient = useQueryClient();
+
   useEffect(() => {
     if (!end) return;
 
@@ -183,68 +239,141 @@ function ChallengeCard({ challenge, isJoined, loading, onToggle }: CardProps) {
 
       setTimeLeft(text);
     }
+
     update();
-    const timerId = setInterval(update, 60000); 
+    const timerId = setInterval(update, 60000);
 
     return () => clearInterval(timerId);
-  }, [challenge.end_date]);
+  }, [challenge.end_date, end]);
+
   const isActive =
-    challenge.status !== "ended" &&
-    (!end || end.getTime() > Date.now());
+    challenge.status !== "ended" && (!end || end.getTime() > Date.now());
 
+  const uploadMutation = useMutation({
+    mutationFn: async (file: File) => {
+      if (!userUid) {
+        throw new Error("You must be logged in to upload.");
+      }
+      await submitChallengeImage(challenge.id, userUid, file);
+    },
+    onSuccess: () => {
+      setUploadMessage("Your art was uploaded successfully.");
+      if (userUid) {
+        queryClient.invalidateQueries({
+          queryKey: ["joinedChallenges", userUid],
+        });
+      }
+    },
+    onError: () => {
+      setUploadMessage("Upload failed, please try again.");
+    },
+  });
 
- return (
-  <article className={styles.card}>
-    {challenge.picture_url && (
-      <div className={styles.imageWrapper}>
-        <img
-          src={challenge.picture_url}
-          alt={challenge.title}
-          className={styles.image}
-        />
-      </div>
-    )}
+  const isUploading = uploadMutation.isPending;
 
-    <div className={styles.cardContent}>
-      <h2 className={styles.cardTitle}>{challenge.title}</h2>
-      {(dateText || (isActive && timeLeft)) && (
-        <div className={styles.cardMeta}>
-          {dateText && (
-            <p className={styles.cardDates}>{dateText}</p>
-          )}
+  function handleUploadClick() {
+    if (fileInputRef.current && !isUploading) {
+      fileInputRef.current.click();
+    }
+  }
 
-          {isActive && timeLeft && (
-            <span className={styles.cardTimer}>
-              ⏰ {timeLeft} left
-            </span>
-          )}
+  function handleFileChange(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!userUid) {
+      setUploadMessage("You must be logged in to upload.");
+      e.target.value = "";
+      return;
+    }
+
+    setUploadMessage(null);
+    uploadMutation.mutate(file);
+    e.target.value = "";
+  }
+
+  return (
+    <article className={styles.card}>
+      {challenge.picture_url && (
+        <div className={styles.imageWrapper}>
+          <img
+            src={challenge.picture_url}
+            alt={challenge.title}
+            className={styles.image}
+          />
         </div>
       )}
 
-      {challenge.description && (
-        <p className={styles.cardDescription}>{challenge.description}</p>
-      )}
+      <div className={styles.cardContent}>
+        <h2 className={styles.cardTitle}>{challenge.title}</h2>
 
-      {challenge.status !== "ended" && (
-        <button
-          className={`${styles.joinButton} ${
-            isJoined ? styles.joinButtonJoined : ""
-          }`}
-          onClick={onToggle}
-          disabled={loading}
-        >
-          {loading
-            ? "Saving..."
-            : isJoined
-            ? "Leave Challenge"
-            : "Join Now"}
-        </button>
-      )}
-    </div>
-  </article>
-);
+        {(dateText || (isActive && timeLeft)) && (
+          <div className={styles.cardMeta}>
+            {dateText && (
+              <p className={styles.cardDates}>{dateText}</p>
+            )}
+
+            {isActive && timeLeft && (
+              <span className={styles.cardTimer}>⏰ {timeLeft} left</span>
+            )}
+          </div>
+        )}
+
+        {challenge.description && (
+          <p className={styles.cardDescription}>{challenge.description}</p>
+        )}
+
+        {challenge.status !== "ended" && (
+          <div className={styles.actionsRow}>
+            <button
+              className={`${styles.joinButton} ${
+                isJoined ? styles.joinButtonJoined : ""
+              }`}
+              onClick={onToggle}
+              disabled={loading}
+            >
+              {loading
+                ? "Saving..."
+                : isJoined
+                ? "Leave Challenge"
+                : "Join Now"}
+            </button>
+
+            {isJoined && !isSubmitted && (
+              <>
+                <button
+                  className={styles.uploadButton}
+                  onClick={handleUploadClick}
+                  disabled={isUploading}
+                >
+                  {isUploading ? "Uploading..." : "Upload your art"}
+                </button>
+
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  style={{ display: "none" }}
+                  onChange={handleFileChange}
+                />
+              </>
+            )}
+
+            {isJoined && isSubmitted && (
+              <span className={styles.submittedText}>
+                You already submitted this challenge.
+              </span>
+            )}
+          </div>
+        )}
+
+        {uploadMessage && (
+          <p className={styles.uploadMessage}>{uploadMessage}</p>
+        )}
+      </div>
+    </article>
+  );
 }
-
 function filterByTabAndSearch(
   challenges: Challenge[],
   tab: TabKey,
@@ -262,7 +391,9 @@ function filterByTabAndSearch(
     const end = c.end_date ? new Date(c.end_date) : undefined;
     return { ...c, _start: start, _end: end } as any;
   });
+
   const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+
   if (tab === "active") {
     return withDates.filter((c) => {
       if (!c._start || !c._end) return false;
@@ -278,18 +409,20 @@ function filterByTabAndSearch(
       return isActive && diff <= WEEK_MS && diff >= 0;
     });
   }
+
   if (tab === "ended") {
     return withDates.filter((c) => {
       if (!c._end) return false;
       return c._end < now;
     });
   }
+
   return withDates;
 }
+
 function formatDate(d: Date) {
   return d.toLocaleDateString("en-GB", {
     day: "numeric",
     month: "short",
   });
 }
-

@@ -538,3 +538,58 @@
   border-top-right-radius: 24px;
   margin-bottom: 12px;
 }
+.challengeActions {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.challengeUploadBtn {
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid #ccc;
+  background: #fff;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.challengeUploadBtn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.submittedText {
+  font-size: 13px;
+  color: #4caf50;
+  font-weight: 500;
+}
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.sectionTitle {
+  font-size: 22px;
+  font-weight: 600;
+}
+.postCard {
+  display: flex;
+  flex-direction: column;
+}
+
+.postInfo {
+  margin-top: 8px;
+  padding: 0 2px;
+}
+
+.postTitle {
+  font-size: 16px;
+  font-weight: 600;
+  color: #111;      
+  margin: 0;
+  text-align: left;
+  line-height: 1.2;
+}

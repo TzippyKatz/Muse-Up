@@ -213,3 +213,55 @@
   color: #2563eb;
   white-space: nowrap;
 }
+.actionsRow {
+  display: flex;
+  gap: 8px;
+  margin-top: 14px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.uploadButton {
+  padding: 8px 14px;
+  background: #ffffff;
+  border: 1px solid #ccc;
+  border-radius: 999px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.uploadButton:hover:not(:disabled) {
+  background: #f5f5f5;
+}
+
+.uploadButton:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.submissionPreview {
+  margin-top: 14px;
+}
+
+.submissionTitle {
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.submissionImage {
+  width: 100%;
+  border-radius: 12px;
+  object-fit: cover;
+}
+
+.uploadMessage {
+  font-size: 13px;
+  margin-top: 6px;
+}
+.submittedText {
+  font-size: 13px;
+  color: #4caf50;
+  font-weight: 500;
+}
