@@ -1,9 +1,38 @@
 "use client";
 
+import { useState, ChangeEvent, FormEvent } from "react";
+
+
 import { useEffect, useState } from "react";
+
 import styles from "./profile.module.css";
 import PostModal from "../components/PostModal/PostModal";
 import { useRouter } from "next/navigation";
+
+import AvatarCropper from "../components/CropImage/CropImage";
+
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+
+import { useFirebaseUid } from "../../hooks/useFirebaseUid";
+import {
+  useProfileEditForm,
+  type EditFormState,
+} from "../../hooks/useProfileEditForm";
+
+import {
+  getUserByUid,
+  updateUserProfile,
+  type User,
+  type UpdateUserPayload,
+} from "../../services/userService";
+import { getUserPosts, type PostCard } from "../../services/postService";
+import {
+  getFollowersForUser,
+  getFollowingForUser,
+  type SimpleUser,
+} from "../../services/followService";
+import { uploadAvatar } from "../../services/uploadService";
+
 import AvatarCropper from "../components/CropImage/CropImage"; 
 
 type User = {
@@ -33,6 +62,7 @@ type PostCard = {
   likes_count?: number;
 };
 
+
 type TabKey =
   | "posts"
   | "saved"
@@ -42,6 +72,9 @@ type TabKey =
   | "followers"
   | "following";
 
+export default function ProfilePage() {
+  const router = useRouter();
+  const queryClient = useQueryClient();
 /* -------------------------------------------------------
    PAGE
 ------------------------------------------------------- */
@@ -71,16 +104,26 @@ export default function ProfilePage() {
     profil_url: "",
   });
 
+  const [activeTab, setActiveTab] = useState<TabKey>("posts");
   const [savingProfile, setSavingProfile] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = useState(false);
-  const [avatarFileToCrop, setAvatarFileToCrop] = useState<File | null>(null);
+  const [avatarFileToCrop, setAvatarFileToCrop] = useState<File | null>(
+    null
+  );
 
-  const router = useRouter();
-  useEffect(() => {
-    if (typeof window === "undefined") return;
+  const { uid, ready: uidReady } = useFirebaseUid();
 
+  const {
+    data: user,
+    isLoading: loadingUser,
+    error: userError,
+  } = useQuery<User>({
+    queryKey: ["user", uid],
+    queryFn: () => getUserByUid(uid as string),
+    enabled: uidReady && !!uid,
+  });
 
   /* -------------------------------------------------------
      1. LOAD USER
@@ -92,11 +135,68 @@ export default function ProfilePage() {
       localStorage.getItem("firebaseUid") ||
       localStorage.getItem("userId");
 
-    if (!uid) {
-      setLoadingUser(false);
-      return;
-    }
+  const { form: editForm, setForm: setEditForm } =
+    useProfileEditForm(user ?? null);
 
+  const {
+    data: posts = [],
+    isLoading: loadingPosts,
+    error: postsError,
+  } = useQuery<PostCard[]>({
+    queryKey: ["posts", user?._id],
+    queryFn: () => getUserPosts(user!._id),
+    enabled: !!user && activeTab === "posts",
+  });
+
+  const {
+    data: followers = [],
+    isLoading: loadingFollowers,
+    error: followersError,
+  } = useQuery<SimpleUser[]>({
+    queryKey: ["followers", user?.firebase_uid],
+    queryFn: () => getFollowersForUser(user!.firebase_uid),
+    enabled: !!user && activeTab === "followers",
+  });
+
+  const {
+    data: following = [],
+    isLoading: loadingFollowing,
+    error: followingError,
+  } = useQuery<SimpleUser[]>({
+    queryKey: ["following", user?.firebase_uid],
+    queryFn: () => getFollowingForUser(user!.firebase_uid),
+    enabled: !!user && activeTab === "following",
+  });
+
+  if (!uidReady) {
+    return <div className={styles.page}>Loading profile…</div>;
+  }
+
+  if (!uid) {
+    return (
+      <div className={styles.page}>
+        <p>No logged-in user. Please sign in.</p>
+      </div>
+    );
+  }
+
+  if (loadingUser) {
+    return <div className={styles.page}>Loading profile…</div>;
+  }
+
+  if (userError || !user) {
+    return (
+      <div className={styles.page}>
+        <p>Failed to load profile.</p>
+      </div>
+    );
+  }
+  function handleEditChange(
+    e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) {
+    const { name, value } = e.target;
+    setEditForm((prev: EditFormState) => ({ ...prev, [name]: value }));
+  }
     async function loadUser() {
       try {
         const res = await fetch(`/api/Users/${uid}`);
@@ -210,10 +310,11 @@ export default function ProfilePage() {
 
     if (!user?.firebase_uid) return;
 
-    setAvatarFileToCrop(file); 
+    setAvatarFileToCrop(file);
     setSaveError(null);
     setSaveSuccess(false);
   }
+
   const handleCroppedAvatarUpload = async (croppedFile: File) => {
     try {
 
@@ -223,10 +324,12 @@ export default function ProfilePage() {
       setUploadingAvatar(true);
       const url = await uploadAvatar(croppedFile);
 
-      setEditForm((prev) => ({ ...prev, profil_url: url }));
-
-      setUser((prev) =>
-        prev ? { ...prev, profil_url: url } : prev
+      setEditForm((prev: EditFormState) => ({
+        ...prev,
+        profil_url: url,
+      }));
+      queryClient.setQueryData<User>(["user", uid], (old) =>
+        old ? { ...old, profil_url: url } : old
       );
       const data = await res.json();
       setFollowers(Array.isArray(data) ? data : []);
@@ -238,6 +341,13 @@ export default function ProfilePage() {
       setSaveError("Upload failed. Please try again.");
     } finally {
       setUploadingAvatar(false);
+      setAvatarFileToCrop(null);
+    }
+  };
+
+  async function handleSaveProfile(e: FormEvent) {
+    e.preventDefault();
+    if (!user) return;
       setAvatarFileToCrop(null); 
 
     }
@@ -249,6 +359,17 @@ export default function ProfilePage() {
     if (!user?.firebase_uid) return;
 
     try {
+      const payload: UpdateUserPayload = {
+        name: editForm.name.trim(),
+        username: editForm.username.trim(),
+        bio: editForm.bio.trim(),
+        location: editForm.location.trim(),
+        profil_url: editForm.profil_url,
+      };
+
+      const updated = await updateUserProfile(user.firebase_uid, payload);
+      queryClient.setQueryData<User>(["user", uid], updated);
+      setSaveSuccess(true);
       const res = await fetch(
         `/api/following-users?userId=${user.firebase_uid}`
       );
@@ -307,6 +428,7 @@ export default function ProfilePage() {
           <div className={styles.metaRow}>
             <button
               className={styles.metaItemButton}
+              onClick={() => setActiveTab("followers")}
               onClick={openFollowers}
             >
               {(user.followers_count ?? 0).toLocaleString()} followers
@@ -316,6 +438,7 @@ export default function ProfilePage() {
 
             <button
               className={styles.metaItemButton}
+              onClick={() => setActiveTab("following")}
               onClick={openFollowing}
             >
               {(user.following_count ?? 0).toLocaleString()} following
@@ -382,6 +505,20 @@ export default function ProfilePage() {
         {/* POSTS */}
         {activeTab === "posts" && (
           <div className={styles.postsSection}>
+            <button
+              className={styles.shareArtBtn}
+              onClick={() => router.push("/create")}
+            >
+              share your art
+              <span className={styles.sharePlus}>+</span>
+            </button>
+
+            {loadingPosts && <p>Loading posts…</p>}
+            {postsError && <p>Failed to load posts.</p>}
+
+            {!loadingPosts && !postsError && posts.length === 0 && (
+              <p className={styles.placeholder}>No posts yet.</p>
+            )}
 
             {loadingPosts && <p>Loading…</p>}
 
@@ -395,7 +532,7 @@ export default function ProfilePage() {
             {loadingPosts && <p>Loading posts…</p>}
             {!loadingPosts && posts.length === 0 && <p>No posts yet.</p>}
 
-            {!loadingPosts && posts.length > 0 && (
+            {!loadingPosts && !postsError && posts.length > 0 && (
               <div className={styles.postsGrid}>
                 {posts.map((p) => (
                   <div
@@ -472,6 +609,12 @@ export default function ProfilePage() {
           <div className={styles.followersSection}>
             <h2 className={styles.sectionTitle}>Followers</h2>
 
+            {loadingFollowers && <p>Loading followers…</p>}
+            {followersError && <p>Failed to load followers.</p>}
+
+            {!loadingFollowers &&
+              !followersError &&
+              followers.length === 0 && <p>No followers yet.</p>}
             {followers.length === 0 && <p>No followers yet.</p>}
 
             <div className={styles.followersGrid}>
@@ -501,6 +644,14 @@ export default function ProfilePage() {
           <div className={styles.followersSection}>
             <h2 className={styles.sectionTitle}>Following</h2>
 
+            {loadingFollowing && <p>Loading following…</p>}
+            {followingError && <p>Failed to load following.</p>}
+
+            {!loadingFollowing &&
+              !followingError &&
+              following.length === 0 && (
+                <p>Not following anyone yet.</p>
+              )}
             {following.length === 0 && <p>No following yet.</p>}
 
             <div className={styles.followersGrid}>
@@ -525,6 +676,7 @@ export default function ProfilePage() {
           </div>
         )}
       </section>
+
       {avatarFileToCrop && (
         <AvatarCropper
           imageFile={avatarFileToCrop}
