@@ -16,7 +16,8 @@
   width: 580px;
   height: 580px;
   border-radius: 50%;
-  filter: blur(80px);
+  /* filter: blur(80px); */
+  opacity: 0.3;
   opacity: 0.45;
   z-index: 0;
 }
