@@ -80,7 +80,8 @@ export default function ProfilePage() {
   } = useQuery<User>({
     queryKey: ["user", uid],
     queryFn: () => getUserByUid(uid as string),
-    enabled: uidReady && !!uid,
+    enabled: !!uid,
+    // enabled: uidReady && !!uid,
   });
 
   const { form: editForm, setForm: setEditForm } =

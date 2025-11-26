@@ -19,7 +19,7 @@ export type UpdateUserPayload = {
 };
 
 export async function getUserByUid(uid: string): Promise<User> {
-  const res = await fetch(`/api/Users/${uid}`);
+  const res = await fetch(`/api/users/${uid}`);
   if (!res.ok) {
     throw new Error("User not found");
   }
