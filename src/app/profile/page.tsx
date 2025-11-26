@@ -331,7 +331,6 @@ export default function ProfilePage() {
         </div>
       </header>
 
-      {/* TABS */}
       <nav className={styles.tabs}>
         {[
           ["posts", "My Posts"],
