@@ -31,7 +31,7 @@ export async function updateUserProfile(
   firebaseUid: string,
   payload: UpdateUserPayload
 ): Promise<User> {
-  const res = await fetch(`/api/Users/${firebaseUid}`, {
+  const res = await fetch(`/api/users/${firebaseUid}`, {
     method: "PUT",
     headers: {
       "Content-Type": "application/json",
@@ -48,7 +48,7 @@ export async function updateUserProfile(
   return res.json();
 }
 export async function getAllUsers() {
-  const res = await fetch("/api/Users");
+  const res = await fetch("/api/users");
 
   if (!res.ok) {
     throw new Error("Failed to load users");
