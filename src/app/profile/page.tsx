@@ -1,30 +1,23 @@
 "use client";
 
-import { useState, ChangeEvent, FormEvent } from "react";
+import { useState, ChangeEvent, FormEvent, MouseEvent } from "react";
 import styles from "./profile.module.css";
 import { useRouter } from "next/navigation";
-import AvatarCropper from "../components/CropImage/CropImage";
+
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 
+import AvatarCropper from "../components/CropImage/CropImage";
+import PostModal from "../components/PostModal/PostModal";
+
+
+// HOOKS
 import { useFirebaseUid } from "../../hooks/useFirebaseUid";
 import { useProfileEditForm } from "../../hooks/useProfileEditForm";
 
-import {
-  getUserByUid,
-  type User,
-} from "../../services/userService";
-
-import {
-  getUserPosts,
-  type PostCard,
-} from "../../services/postService";
-
-import {
-  getFollowersForUser,
-  getFollowingForUser,
-  type SimpleUser,
-} from "../../services/followService";
-
+// SERVICES
+import { getUserByUid, type User } from "../../services/userService";
+import { getUserPosts, type PostCard } from "../../services/postService";
+import { getFollowersForUser, getFollowingForUser, type SimpleUser } from "../../services/followService";
 import { uploadAvatar } from "../../services/uploadService";
 import { getSavedPosts } from "../../services/savedPostService";
 
@@ -35,6 +28,9 @@ import {
   submitChallengeImage,
 } from "../../services/challengeSubmissionsService";
 
+import { Pencil, Trash2 } from "lucide-react";
+
+// TABS TYPE
 type TabKey =
   | "posts"
   | "saved"
@@ -68,15 +64,22 @@ export default function ProfilePage() {
   const queryClient = useQueryClient();
 
   const [activeTab, setActiveTab] = useState<TabKey>("posts");
+
   const [savingProfile, setSavingProfile] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
+
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = useState(false);
+
   const [avatarFileToCrop, setAvatarFileToCrop] = useState<File | null>(null);
+
   const [uploadingChallengeId, setUploadingChallengeId] = useState<number | null>(null);
+
+  const [selectedPostId, setSelectedPostId] = useState<string | null>(null);
 
   const { uid, ready: uidReady } = useFirebaseUid();
 
+  // USER DATA
   const {
     data: user,
     isLoading: loadingUser,
@@ -87,11 +90,11 @@ export default function ProfilePage() {
     enabled: uidReady && !!uid,
   });
 
-  const {
-    editForm,
-    setEditForm,
-  } = useProfileEditForm(user ?? null);
+  const { form: editForm, setForm: setEditForm } =
+  useProfileEditForm(user ?? null);
 
+
+  // POSTS
   const {
     data: posts = [],
     isLoading: loadingPosts,
@@ -102,6 +105,7 @@ export default function ProfilePage() {
     enabled: !!user && activeTab === "posts",
   });
 
+  // SAVED POSTS
   const {
     data: savedPosts = [],
     isLoading: loadingSaved,
@@ -112,6 +116,7 @@ export default function ProfilePage() {
     enabled: activeTab === "saved",
   });
 
+  // CHALLENGES
   const {
     data: joinedSubmissions = [],
     isLoading: loadingJoinedChallenges,
@@ -131,6 +136,7 @@ export default function ProfilePage() {
     queryFn: () => getChallenges(),
     enabled: !!user && activeTab === "challenge",
   });
+
   const leaveChallengeMutation = useMutation({
     mutationFn: (challengeId: number) =>
       leaveChallenge(challengeId, user!.firebase_uid),
@@ -166,6 +172,7 @@ export default function ProfilePage() {
           .filter((x) => x.challenge !== undefined)
       : [];
 
+  // FOLLOWERS
   const {
     data: followers = [],
     isLoading: loadingFollowers,
@@ -176,6 +183,7 @@ export default function ProfilePage() {
     enabled: !!user && activeTab === "followers",
   });
 
+  // FOLLOWING
   const {
     data: following = [],
     isLoading: loadingFollowing,
@@ -186,24 +194,15 @@ export default function ProfilePage() {
     enabled: !!user && activeTab === "following",
   });
 
+  // -------- PRE LOADING PROTECTION ---------
   if (!uidReady) return <div className={styles.page}>Loading profile…</div>;
-
-  if (!uid)
-    return (
-      <div className={styles.page}>
-        <p>No logged-in user. Please sign in.</p>
-      </div>
-    );
-
+  if (!uid) return <div className={styles.page}>No logged-in user.</div>;
   if (loadingUser) return <div className={styles.page}>Loading profile…</div>;
-
   if (userError || !user)
-    return (
-      <div className={styles.page}>
-        <p>Failed to load profile.</p>
-      </div>
-    );
+    return <div className={styles.page}>Failed to load profile.</div>;
 
+  // -----------------------------------------
+  // HANDLE EDITING FIELDS
   function handleEditChange(
     e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
   ) {
@@ -211,6 +210,7 @@ export default function ProfilePage() {
     setEditForm((prev: any) => ({ ...prev, [name]: value }));
   }
 
+  // ------------- AVATAR UPLOAD AFTER CROP ----------------
   const handleCroppedAvatarUpload = async (croppedFile: File) => {
     try {
       setUploadingAvatar(true);
@@ -230,6 +230,7 @@ export default function ProfilePage() {
     }
   };
 
+  // --------------------- SAVE PROFILE ---------------------
   async function handleSaveProfile(e: FormEvent) {
     e.preventDefault();
     if (!user) return;
@@ -256,8 +257,43 @@ export default function ProfilePage() {
       setSavingProfile(false);
     }
   }
+
+  // ---------------- DELETE POST ----------------
+  async function handleDeletePost(e: MouseEvent, postId: string) {
+    e.stopPropagation();
+
+    if (!confirm("Are you sure you want to delete this post?")) return;
+
+    try {
+      const res = await fetch(`/api/posts/${postId}`, { method: "DELETE" });
+      if (!res.ok) return console.error("Failed to delete post");
+
+      queryClient.invalidateQueries({
+        queryKey: ["posts", user?._id],
+      });
+    } catch (err) {
+      console.error("Delete error:", err);
+    }
+  }
+
+  // ---------------- EDIT POST ----------------
+  function handleEditPost(e: MouseEvent, postId: string) {
+    e.stopPropagation();
+    router.push(`/edit-post/${postId}`);
+  }
+
+  // ⛔ כדי למנוע פתיחה של ה-PostModal בזמן לחיצה על כפתור
+  function stopClick(e: MouseEvent) {
+    e.stopPropagation();
+  }
+
+  // =========================================================
+  //                         UI
+  // =========================================================
+
   return (
     <div className={styles.page}>
+      {/* HEADER */}
       <header className={styles.header}>
         <div className={styles.avatarWrapper}>
           {user.profil_url ? (
@@ -295,6 +331,7 @@ export default function ProfilePage() {
         </div>
       </header>
 
+      {/* TABS */}
       <nav className={styles.tabs}>
         {[
           ["posts", "My Posts"],
@@ -315,7 +352,10 @@ export default function ProfilePage() {
         ))}
       </nav>
 
+      {/* CONTENT */}
       <section className={styles.content}>
+
+        {/* ========================= POSTS TAB ========================= */}
         {activeTab === "posts" && (
           <div className={styles.postsSection}>
             <div className={styles.sectionHeader}>
@@ -338,12 +378,38 @@ export default function ProfilePage() {
             {!loadingPosts && posts.length > 0 && (
               <div className={styles.postsGrid}>
                 {posts.map((p) => (
-                  <div key={p._id} className={styles.postCard}>
-                    <img
-                      src={p.image_url}
-                      alt={p.title}
-                      className={styles.postImage}
-                    />
+                  <div
+                    key={p._id}
+                    className={styles.postCard}
+                    onClick={() => setSelectedPostId(p._id)}
+                  >
+                    <div className={styles.postImageWrapper}>
+                      <img
+                        src={p.image_url}
+                        alt={p.title}
+                        className={styles.postImage}
+                      />
+                    </div>
+
+                    {/* ACTION BUTTONS — THE ONES YOU WANTED */}
+                    <div className={styles.postActions}>
+                      <button
+                        className={styles.postActionBtn}
+                        onClick={(e) => {
+                          stopClick(e);
+                          handleEditPost(e, p._id);
+                        }}
+                      >
+                        <Pencil size={18} className={styles.icon} />
+                      </button>
+
+                      <button
+                        className={styles.postActionBtn}
+                        onClick={(e) => handleDeletePost(e, p._id)}
+                      >
+                        <Trash2 size={18} className={styles.iconDelete} />
+                      </button>
+                    </div>
 
                     <div className={styles.postInfo}>
                       <h3 className={styles.postTitle}>{p.title}</h3>
@@ -354,6 +420,8 @@ export default function ProfilePage() {
             )}
           </div>
         )}
+
+        {/* ========================= SAVED TAB ========================= */}
         {activeTab === "saved" && (
           <div className={styles.postsGrid}>
             {loadingSaved && <p>Loading saved…</p>}
@@ -362,7 +430,11 @@ export default function ProfilePage() {
             {!loadingSaved &&
               savedPosts.length > 0 &&
               savedPosts.map((p) => (
-                <div key={p._id} className={styles.postCard}>
+                <div
+                  key={p._id}
+                  className={styles.postCard}
+                  onClick={() => setSelectedPostId(p._id)}
+                >
                   <img src={p.image_url} className={styles.postImage} />
                   <div className={styles.postInfo}>
                     <h3 className={styles.postTitle}>{p.title}</h3>
@@ -376,6 +448,7 @@ export default function ProfilePage() {
           </div>
         )}
 
+        {/* ========================= CHALLENGE TAB ========================= */}
         {activeTab === "challenge" && (
           <div className={styles.postsSection}>
             {(loadingJoinedChallenges || loadingAllChallenges) && (
@@ -417,10 +490,7 @@ export default function ProfilePage() {
                       const inputId = `challenge-upload-${ch.id}`;
 
                       return (
-                        <div
-                          key={submission._id}
-                          className={styles.challengeCard}
-                        >
+                        <div key={submission._id} className={styles.challengeCard}>
                           {ch.picture_url && (
                             <img
                               src={ch.picture_url}
@@ -430,9 +500,7 @@ export default function ProfilePage() {
                           )}
 
                           <div>
-                            <h3 className={styles.challengeTitle}>
-                              {ch.title}
-                            </h3>
+                            <h3 className={styles.challengeTitle}>{ch.title}</h3>
                             <p className={styles.challengeStatus}>
                               Status: {isActive ? "Active" : "Finished"}
                             </p>
@@ -445,9 +513,7 @@ export default function ProfilePage() {
                                   type="button"
                                   className={styles.challengeUploadBtn}
                                   onClick={() =>
-                                    document
-                                      .getElementById(inputId)
-                                      ?.click()
+                                    document.getElementById(inputId)?.click()
                                   }
                                   disabled={
                                     uploadingChallengeId === ch.id ||
@@ -511,6 +577,8 @@ export default function ProfilePage() {
               )}
           </div>
         )}
+
+        {/* ========================= EDIT PROFILE TAB ========================= */}
         {activeTab === "edit" && (
           <form className={styles.editForm} onSubmit={handleSaveProfile}>
             <div className={styles.editGrid}>
@@ -594,14 +662,14 @@ export default function ProfilePage() {
 
                 {avatarFileToCrop && (
                   <AvatarCropper
-                    file={avatarFileToCrop}
+                    imageFile={avatarFileToCrop}
+                    onUpload={handleCroppedAvatarUpload}
                     onCancel={() => setAvatarFileToCrop(null)}
-                    onCrop={handleCroppedAvatarUpload}
                   />
                 )}
 
                 <p className={styles.editHint}>
-                  JPG, PNG, max 5MB. Use a clear image of your art.
+                  JPG, PNG, max 5MB.
                 </p>
               </div>
             </div>
@@ -642,6 +710,7 @@ export default function ProfilePage() {
           </form>
         )}
 
+        {/* ========================= FOLLOWERS TAB ========================= */}
         {activeTab === "followers" && (
           <div className={styles.followersSection}>
             <h2 className={styles.sectionTitle}>Followers</h2>
@@ -673,6 +742,7 @@ export default function ProfilePage() {
           </div>
         )}
 
+        {/* ========================= FOLLOWING TAB ========================= */}
         {activeTab === "following" && (
           <div className={styles.followersSection}>
             <h2 className={styles.sectionTitle}>Following</h2>
@@ -703,7 +773,16 @@ export default function ProfilePage() {
             </div>
           </div>
         )}
+
       </section>
+
+      {/* POST MODAL */}
+      {selectedPostId && (
+        <PostModal
+          postId={selectedPostId}
+          onClose={() => setSelectedPostId(null)}
+        />
+      )}
     </div>
   );
 }
