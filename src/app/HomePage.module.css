@@ -5,13 +5,12 @@
   background-color: #f5f7fb;
   font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
     sans-serif;
+     min-height: 100vh;   
 }
-
 .home {
   padding-top: 0 !important;
   margin-top: 0 !important;
 }
-
 .container {
   margin-top: 0;
   padding-top: 0;
@@ -19,21 +18,23 @@
 
 .left {
   flex: 2;
-  padding: 16px 40px 32px; 
+  padding: 16px 40px 32px;
   background-color: #f5f7fb;
 }
 
 .header {
   display: flex;
-  align-items: center;
+  align-items: center;      
   justify-content: space-between;
-  margin-bottom: 24px;
+  gap: 32px;
+  margin-bottom: 32px;
+  padding-top: 10px;      
 }
-
 .logoArea {
   display: flex;
   align-items: center;
   gap: 8px;
+  flex: 0 0 auto;
 }
 
 .logoText {
@@ -42,6 +43,28 @@
   color: #12315b;
 }
 
+.centerTitle {
+  flex: 1;
+  text-align: center;
+  margin: 0;            
+  padding: 0;         
+  transform: translateY(-4px);
+}
+
+
+.centerTitle h2 {
+  font-size: 32px;     
+  margin-bottom: 4px;
+  font-weight: 700;
+  color: #12315b;
+}
+
+.centerTitle p {
+  font-size: 20px;
+  font-weight: 500;
+  color: #12315b;
+  margin-top: -4px;     
+}
 .nav {
   display: flex;
   gap: 12px;
@@ -50,27 +73,22 @@
   border-radius: 999px;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
   backdrop-filter: blur(10px);
+  margin-left: 60px;
 }
-
-/* כפתור מודרני, בלי קו תחתון ובלי מסגרת כחולה */
 .navBtn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-
   padding: 10px 22px;
   border-radius: 999px;
   border: none;
   background: #ffffff;
-
   font-size: 14px;
   font-weight: 500;
   color: #12315b;
-  text-decoration: none;           /* מוריד את הקו התחתון */
-
+  text-decoration: none;
   box-shadow: 0 6px 18px rgba(12, 93, 244, 0.12);
   cursor: pointer;
-
   transition:
     transform 0.15s ease,
     box-shadow 0.15s ease,
@@ -87,36 +105,17 @@
   transform: translateY(0);
   box-shadow: 0 3px 10px rgba(12, 93, 244, 0.25);
 }
-
-
-.centerTitle {
-  text-align: center;
-  margin-bottom: 24px;
-}
-
-.centerTitle h2 {
-  font-size: 24px;
-  margin-bottom: 4px;
-}
-
-.centerTitle p {
-  font-size: 14px;
-  color: #555;
-}
-
 .grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 32px 40px;
 }
-
 .card {
   display: flex;
   flex-direction: column;
   align-items: center;
   text-align: center;
 }
-
 .artPreview {
   width: 140px;
   height: 140px;
@@ -125,14 +124,12 @@
   margin-bottom: 8px;
   background-color: #eee;
 }
-
 .artImage {
   width: 100%;
   height: 100%;
   object-fit: cover;
   display: block;
 }
-
 .artistCircle {
   width: 60px;
   height: 60px;
@@ -142,35 +139,28 @@
   border: 2px solid #fff;
   box-shadow: 0 0 6px rgba(0, 0, 0, 0.2);
 }
-
 .avatar {
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
-
 .artistName {
   text-align: center;
   font-weight: 600;
   margin-top: 6px;
 }
-
 .medium,
 .statsLine {
   text-align: center;
   font-size: 13px;
   color: #555;
 }
-
 .statsLine {
   margin-top: 4px;
   white-space: nowrap;
 }
-
-/* -------- הצד הימני -------- */
-
 .right {
-  flex: 1.2;
+flex: 0.5;
   padding: 40px 40px 40px 32px;
   background: linear-gradient(
     160deg,
@@ -180,32 +170,30 @@
   );
   display: flex;
   flex-direction: column;
-  justify-content: flex-start;  /* לא space-between כדי שלא ימרח */
-  gap: 24px;                    /* רווח אנכי בין הטקסט לאיור */
+  justify-content: flex-start;
+  gap: 24px;
+  height: 100vh;       
 }
-
 .heroTitle {
   font-size: 32px;
   line-height: 1.15;
   color: #12315b;
   margin-bottom: 16px;
+  font-weight: 700;
 }
-
 .heroList {
   list-style: none;
   padding: 0;
-  margin: 16px 0 24px;   /* רווח בין הכותרת לרשימה ולכפתור */
+  margin: 16px 0 24px;
   font-size: 14px;
   color: #333;
-  line-height: 1.6;      /* מרווח בין השורות */
+  line-height: 1.6;
 }
-
 .heroList li + li {
   margin-top: 4px;
 }
-
 .ctaBtn {
-  margin-top: 8px;       /* מרחיק את הכפתור מהרשימה */
+  margin-top: 8px;
   padding: 12px 24px;
   border-radius: 999px;
   border: none;
@@ -214,12 +202,12 @@
   font-weight: 600;
   cursor: pointer;
   font-size: 14px;
+    text-decoration: none;
+      margin-left: 10px; 
 }
-
 .ctaBtn:hover {
   background-color: #004bd6;
 }
-
 .illustrationBox {
   align-self: center;
   width: 220px;
@@ -227,15 +215,29 @@
   border-radius: 24px;
   background-color: #ffffff;
   box-shadow: 0 12px 30px rgba(0, 0, 0, 0.08);
-  margin-top: 32px;      /* רווח ברור מהכפתור */
+  margin-top: 0;            
   display: flex;
   align-items: center;
   justify-content: center;
 }
-
 .illustrationBox img {
-  max-width: 100%;
-  max-height: 100%;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;   
+  border-radius: 24px; 
+}
+.heroText {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-bottom: 32px;
+  align-items: flex-start; 
+    padding-left: 60px;
+}
+.logoImg {
+  width: 70px;
+  height: 70px;
+  border-radius: 8px;
   object-fit: cover;
-  border-radius: 20px;
+  display: block;
 }
