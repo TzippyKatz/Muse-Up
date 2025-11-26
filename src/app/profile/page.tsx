@@ -32,7 +32,8 @@ export default function ProfilePage() {
   const { data: user } = useQuery<User>({
     queryKey: ["user", uid],
     queryFn: () => getUserByUid(uid as string),
-    enabled: uidReady && !!uid,
+    enabled: !!uid,
+    // enabled: uidReady && !!uid,
   });
 
   const { data: posts = [] } = useQuery<PostCard[]>({
