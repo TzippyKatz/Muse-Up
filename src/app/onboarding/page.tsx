@@ -252,6 +252,7 @@ export default function OnboardingPage() {
               onChange={handleChange}
               rows={4}
               placeholder="Tell us about your style, inspiration, and creative journey..."
+
               className={styles.textarea}
               required
             />

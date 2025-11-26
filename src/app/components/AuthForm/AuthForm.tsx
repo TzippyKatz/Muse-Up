@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation"; // חשוב!! לא "next/router"
+import { useRouter } from "next/navigation";
 import { auth, provider } from "../../../lib/firebase";
 import {
     signInWithEmailAndPassword,
@@ -25,7 +25,7 @@ export default function AuthForm({ mode }: { mode: "login" | "register" }) {
     const [showPassword, setShowPassword] = useState(false);
     const [emailError, setEmailError] = useState<string | null>(null);
     const [passwordErrors, setPasswordErrors] = useState<string[]>([]);
-
+    const [error, setError] = useState("");
 
     const validateEmail = (value: string): string | null => {
         if (!value) return "Email is required.";
@@ -76,24 +76,47 @@ export default function AuthForm({ mode }: { mode: "login" | "register" }) {
 
         try {
             if (mode === "login") {
-                await signInWithEmailAndPassword(auth, email, password);
+                const firebaseUser = await signInWithEmailAndPassword(auth, email, password);
+                const res = await fetch(`/api/users?email=${encodeURIComponent(email)}`);
+                const mongoUser = await res.json();
+
+                if (!mongoUser) {
+                    if (firebaseUser) {
+                        setError("You have to complete your sign up.");
+                    } else {
+                        setError("No account found with this email. Please sign up first.");
+                        return;
+                    }
+                }
+
                 router.push("/landing");
                 alert("Login successfully!");
             } else {
                 if (mode === "register") {
-                    const methods = await fetchSignInMethodsForEmail(auth, email);
-                    if (methods.length > 0) {
-                        alert("This email is already registered. Please log in instead.");
+                    const res = await fetch(`/api/users?email=${encodeURIComponent(email.trim())}`);
+                    console.log("Fetch existing user response status:", res.status);
+                    const userData = await res.json();
+                    console.log("Existing user data:", userData);
+                    if (userData !== null) {
+                        setError("This email is already registered. Please log in instead.");
                         return;
                     }
+                    const methods = await fetchSignInMethodsForEmail(auth, email);
+                    if (methods.length > 0) {
+                        setError("This email is already registered in Firebase. Please log in instead.");
+                        return;
+                    }
+
+                    const cred = await createUserWithEmailAndPassword(auth, email, password);
+                    console.log("CREATED FIREBASE USER:", cred.user);
+                    // await createUserWithEmailAndPassword(auth, email, password);
+                    router.push("/onboarding");
+                    alert("register successfully!");
                 }
-                await createUserWithEmailAndPassword(auth, email, password);
-                router.push("/onboarding");
-                alert("register successfully!");
             }
         } catch (err: any) {
             const msg = getAuthErrorMessage(err, mode);
-            alert(msg);
+            setError(msg);
         }
     };
 
@@ -103,7 +126,7 @@ export default function AuthForm({ mode }: { mode: "login" | "register" }) {
             const user = result.user;
 
             if (!user.email) {
-                alert("Could not retrieve Google email.");
+                setError("Could not retrieve Google email.");
                 await signOut(auth);
                 return;
             }
@@ -113,27 +136,30 @@ export default function AuthForm({ mode }: { mode: "login" | "register" }) {
             const userExists = await checkUserInDB(email);
             console.log("User exists in DB:", userExists);
 
-            if (mode === "login" && !userExists) {
-                alert("No account found with this email. Please sign up first.");
-                await signOut(auth);
-                return;
-            }
-
-            if (mode === "register" && userExists) {
-                alert("Account already exists. Please log in instead.");
-                await signOut(auth);
+            if (mode === "login") {
+                if (!userExists) {
+                    router.push("/register");
+                    setError("No account found with this email. Please sign up first.");
+                    await signOut(auth);
+                    return;
+                }
+                router.push("/landing");
                 return;
             }
 
             if (mode === "register") {
+                if (userExists) {
+                    router.push("/login");
+                    setError("Account already exists. Please log in instead.");
+                    await signOut(auth);
+                    return;
+                }
                 router.push("/onboarding");
-            } else {
-                router.push("/landing");
+                return;
             }
-
         } catch (err: any) {
             console.error("Google authentication failed:", err);
-            alert("Google authentication failed. Try again.");
+            setError("Google authentication failed. Try again.");
         }
     };
 
@@ -156,6 +182,7 @@ export default function AuthForm({ mode }: { mode: "login" | "register" }) {
                 </p>
 
                 <form onSubmit={handleSubmit} className={styles.form}>
+                    {error && <div className={styles.globalError}>{error}</div>}
                     {/* Email */}
                     <label className={styles.label}>
                         Email address
@@ -262,7 +289,7 @@ export default function AuthForm({ mode }: { mode: "login" | "register" }) {
 
                 <p className={styles.switch}>
                     {mode === "login"
-                        ? "Don't have an account? <br> Forget password?"
+                        ? "Don't have an account?"
                         : "Already have an account?"}{" "}
                     <Link
                         href={mode === "login" ? "/register" : "/login"}
