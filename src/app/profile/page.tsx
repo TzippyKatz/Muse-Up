@@ -1,8 +1,7 @@
 "use client";
-import { useState, ChangeEvent, FormEvent, MouseEvent } from "react";
+import { useState, MouseEvent } from "react";
 import styles from "./profile.module.css";
 import { useRouter } from "next/navigation";
-import AvatarCropper from "../components/CropImage/CropImage";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { Pencil, Trash2 } from "lucide-react";
@@ -10,22 +9,24 @@ import { Pencil, Trash2 } from "lucide-react";
 import { useFirebaseUid } from "../../hooks/useFirebaseUid";
 import {
   useProfileEditForm,
-  type EditFormState,
 } from "../../hooks/useProfileEditForm";
 
 import {
   getUserByUid,
-  updateUserProfile,
   type User,
-  type UpdateUserPayload,
 } from "../../services/userService";
-import { getUserPosts, type PostCard } from "../../services/postService";
+
+import {
+  getUserPosts,
+  type PostCard,
+} from "../../services/postService";
+
 import {
   getFollowersForUser,
   getFollowingForUser,
   type SimpleUser,
 } from "../../services/followService";
-import { uploadAvatar } from "../../services/uploadService";
+
 import { getSavedPosts } from "../../services/savedPostService";
 import PostModal from "../components/PostModal/PostModal";
 
@@ -43,12 +44,6 @@ export default function ProfilePage() {
   const queryClient = useQueryClient();
 
   const [activeTab, setActiveTab] = useState<TabKey>("posts");
-  const [savingProfile, setSavingProfile] = useState(false);
-  const [uploadingAvatar, setUploadingAvatar] = useState(false);
-  const [saveError, setSaveError] = useState<string | null>(null);
-  const [saveSuccess, setSaveSuccess] = useState(false);
-  const [avatarFileToCrop, setAvatarFileToCrop] = useState<File | null>(null);
-
   const [selectedPostId, setSelectedPostId] = useState<string | null>(null);
 
   const { uid, ready: uidReady } = useFirebaseUid();
@@ -59,8 +54,7 @@ export default function ProfilePage() {
     enabled: uidReady && !!uid,
   });
 
-  const { form: editForm, setForm: setEditForm } =
-    useProfileEditForm(user ?? null);
+  useProfileEditForm(user ?? null); // כדי למנוע קריסה
 
   const { data: posts = [] } = useQuery<PostCard[]>({
     queryKey: ["posts", user?._id],
@@ -94,35 +88,33 @@ export default function ProfilePage() {
     e.stopPropagation();
   }
 
+  // ---------------- DELETE POST ----------------
   async function handleDeletePost(e: MouseEvent, postId: string) {
     e.stopPropagation();
 
     if (!confirm("Are you sure you want to delete this post?")) return;
 
     try {
-      const res = await fetch(`/api/posts/${postId}`, {
-        method: "DELETE",
+      const res = await fetch(`/api/posts/${postId}`, { method: "DELETE" });
+      if (!res.ok) return console.error("Failed to delete post");
+
+      console.log("Deleted:", postId);
+
+      queryClient.invalidateQueries({
+        queryKey: ["posts", user?._id],
       });
-
-      if (!res.ok) {
-        console.error("Failed to delete post");
-        return;
-      }
-
-      console.log("Deleted post:", postId);
-
-     queryClient.invalidateQueries({
-  queryKey: ["posts", user?._id],
-});
     } catch (err) {
       console.error("Delete error:", err);
     }
   }
 
+  // ---------------- EDIT POST ----------------
   function handleEditPost(e: MouseEvent, postId: string) {
     e.stopPropagation();
     router.push(`/edit-post/${postId}`);
   }
+
+  // -----------------------------------------------------
 
   return (
     <div className={styles.page}>
@@ -185,6 +177,7 @@ export default function ProfilePage() {
 
       {/* CONTENT */}
       <section className={styles.content}>
+        {/* POSTS */}
         {activeTab === "posts" && (
           <div className={styles.postsSection}>
             <button
@@ -203,10 +196,14 @@ export default function ProfilePage() {
                 >
                   <img src={p.image_url} className={styles.postImage} />
 
+                  {/* ACTION BUTTONS */}
                   <div className={styles.postActions}>
                     <button
                       className={styles.postActionBtn}
-                      onClick={(e) => handleEditPost(e, p._id)}
+                      onClick={(e) => {
+                        stopClick(e);
+                        handleEditPost(e, p._id);
+                      }}
                     >
                       <Pencil size={18} className={styles.icon} />
                     </button>
@@ -228,6 +225,7 @@ export default function ProfilePage() {
           </div>
         )}
 
+        {/* SAVED */}
         {activeTab === "saved" && (
           <div className={styles.postsGrid}>
             {savedPosts.map((p) => (
@@ -245,6 +243,7 @@ export default function ProfilePage() {
           </div>
         )}
 
+        {/* FOLLOWERS */}
         {activeTab === "followers" && (
           <div className={styles.followersSection}>
             {followers.map((f) => (
@@ -259,6 +258,7 @@ export default function ProfilePage() {
           </div>
         )}
 
+        {/* FOLLOWING */}
         {activeTab === "following" && (
           <div className={styles.followersSection}>
             {following.map((f) => (
@@ -275,7 +275,10 @@ export default function ProfilePage() {
       </section>
 
       {selectedPostId && (
-        <PostModal postId={selectedPostId} onClose={() => setSelectedPostId(null)} />
+        <PostModal
+          postId={selectedPostId}
+          onClose={() => setSelectedPostId(null)}
+        />
       )}
     </div>
   );
