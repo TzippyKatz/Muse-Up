@@ -23,7 +23,6 @@ type Message = {
   text: string;
   createdAt: string;
 };
-
 type Conversation = {
   _id: string;
   lastMessageText?: string;
@@ -37,60 +36,52 @@ type Conversation = {
     profil_url?: string;
   };
 };
-
 export default function ConversationPage() {
   const { conversationId } = useParams<{ conversationId: string }>();
   const router = useRouter();
   const socket = useSocket();
-
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
-
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loadingConversations, setLoadingConversations] = useState(true);
-
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
-
   const chatBoxRef = useRef<HTMLDivElement | null>(null);
   const bottomRef = useRef<HTMLDivElement | null>(null);
-  const autoScrollRef = useRef(true); 
-
+  const autoScrollRef = useRef(true);
   const currentUid =
     typeof window !== "undefined"
       ? localStorage.getItem("firebase_uid")
       : null;
-
+  const [editingMessageId, setEditingMessageId] = useState<string | null>(
+    null
+  );
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [conversationToDelete, setConversationToDelete] = useState<string | null>(null);
+  const [deletingConversation, setDeletingConversation] = useState(false);
   useEffect(() => {
     if (!autoScrollRef.current) return;
     if (!bottomRef.current) return;
-
     bottomRef.current.scrollIntoView({
       behavior: "smooth",
       block: "end",
     });
   }, [messages.length, conversationId]);
-
   const handleChatScroll = () => {
     const box = chatBoxRef.current;
     if (!box) return;
-
     const distanceFromBottom =
       box.scrollHeight - box.scrollTop - box.clientHeight;
-
     autoScrollRef.current = distanceFromBottom < 80;
   };
-
   useEffect(() => {
     if (!socket) return;
-
     const uid = localStorage.getItem("firebase_uid");
     if (!uid) {
       console.warn("No firebase_uid in localStorage");
       setLoadingConversations(false);
       return;
     }
-
     socket.emit(
       "getConversations",
       { userUid: uid },
@@ -99,18 +90,15 @@ export default function ConversationPage() {
         conversations?: any[];
         error?: string;
       }) => {
-        console.log("getConversations (conversation page) raw:", res);
         if (res?.ok && res.conversations) {
           const mapped: Conversation[] = res.conversations.map((c: any) => {
             let unread = Number(c.unread_count ?? 0);
-
             if (c.unreadByUser && typeof c.unreadByUser === "object") {
               const asRecord = c.unreadByUser as Record<string, number>;
               if (uid in asRecord) {
                 unread = asRecord[uid] ?? unread;
               }
             }
-
             return {
               _id: c._id,
               lastMessageText: c.lastMessageText,
@@ -126,10 +114,6 @@ export default function ConversationPage() {
               new Date(a.lastMessageAt || 0).getTime()
           );
 
-          console.log(
-            "mapped conversations (conversation page):",
-            mapped
-          );
           setConversations(mapped);
         } else {
           console.error("getConversations error", res?.error);
@@ -140,18 +124,15 @@ export default function ConversationPage() {
   }, [socket]);
   useEffect(() => {
     if (!socket || !conversationId) return;
-
     const uid = localStorage.getItem("firebase_uid");
     if (!uid) {
       console.warn("No firebase_uid in localStorage");
       return;
     }
-
     socket.emit("joinConversation", {
       conversationId,
       userUid: uid,
     });
-
     socket.emit(
       "getMessages",
       { conversationId },
@@ -164,18 +145,15 @@ export default function ConversationPage() {
         }
       }
     );
-
     socket.emit("markConversationRead", {
       conversationId,
       userUid: uid,
     });
-
     setConversations((prev) =>
       prev.map((c) =>
         c._id === conversationId ? { ...c, unread_count: 0 } : c
       )
     );
-
     const handleIncoming = (payload: {
       conversationId: string;
       message: Message;
@@ -183,84 +161,166 @@ export default function ConversationPage() {
       setConversations((prev) => {
         const updated = prev.map((c) => {
           if (c._id !== payload.conversationId) return c;
-
           const base = {
             ...c,
             lastMessageText: payload.message.text,
             lastMessageAt: payload.message.createdAt,
           };
-
           if (payload.conversationId === conversationId) {
             return { ...base, unread_count: 0 };
           }
-
           return {
             ...base,
             unread_count: (c.unread_count || 0) + 1,
           };
         });
-
         return updated.sort(
           (a, b) =>
             new Date(b.lastMessageAt || 0).getTime() -
             new Date(a.lastMessageAt || 0).getTime()
         );
       });
-
       if (payload.conversationId === conversationId) {
         setMessages((prev) => [...prev, payload.message]);
       }
     };
-
+    const handleMessageDeleted = (payload: {
+      messageId: string;
+      conversationId: string;
+    }) => {
+      if (payload.conversationId !== conversationId) return;
+      setMessages((prev) => prev.filter((m) => m._id !== payload.messageId));
+    };
+    const handleMessageEdited = (payload: { message: Message }) => {
+      const msg = payload.message;
+      if (msg.conversation_id !== conversationId) return;
+      setMessages((prev) =>
+        prev.map((m) => (m._id === msg._id ? msg : m))
+      );
+    };
     socket.on("message", handleIncoming);
-
+    socket.on("messageDeleted", handleMessageDeleted);
+    socket.on("messageEdited", handleMessageEdited);
     return () => {
       socket.off("message", handleIncoming);
+      socket.off("messageDeleted", handleMessageDeleted);
+      socket.off("messageEdited", handleMessageEdited);
     };
   }, [socket, conversationId]);
-
   const handleSend = (e: FormEvent) => {
     e.preventDefault();
     if (!socket || !conversationId) return;
-
     const text = input.trim();
     if (!text) return;
-
     const uid = localStorage.getItem("firebase_uid");
     if (!uid) {
       console.warn("No firebase_uid in localStorage");
       return;
     }
-
     setSending(true);
-
-    socket.emit(
-      "sendMessage",
-      { conversationId, senderUid: uid, text },
-      (res: { ok: boolean; message?: Message; error?: string }) => {
-        setSending(false);
-        if (!res?.ok) {
-          console.error("sendMessage error", res?.error);
-          return;
+    if (editingMessageId) {
+      socket.emit(
+        "editMessage",
+        { messageId: editingMessageId, userUid: uid, text },
+        (res: { ok: boolean; message?: Message; error?: string }) => {
+          setSending(false);
+          if (!res?.ok) {
+            console.error("editMessage error", res?.error);
+            return;
+          }
+          setInput("");
+          setEditingMessageId(null);
         }
-        setInput("");
-        autoScrollRef.current = true;
-      }
-    );
+      );
+    } else {
+      socket.emit(
+        "sendMessage",
+        { conversationId, senderUid: uid, text },
+        (res: { ok: boolean; message?: Message; error?: string }) => {
+          setSending(false);
+          if (!res?.ok) {
+            console.error("sendMessage error", res?.error);
+            return;
+          }
+          setInput("");
+          autoScrollRef.current = true;
+        }
+      );
+    }
   };
-
   const handleEmojiClick = (emojiData: any) => {
     setInput((prev) => prev + (emojiData.emoji || ""));
   };
-
   const isSendDisabled = sending || !input.trim();
-
   const activeConversation = conversations.find(
     (c) => c._id === conversationId
   );
-
   const handleSelectConversation = (id: string) => {
     router.push(`/messages/${id}`);
+  };
+  const startEditMessage = (message: Message) => {
+    setEditingMessageId(message._id);
+    setInput(message.text);
+    setShowEmojiPicker(false);
+  };
+
+  const cancelEdit = () => {
+    setEditingMessageId(null);
+    setInput("");
+  };
+  const handleDeleteMessage = (messageId: string) => {
+    if (!socket) return;
+
+    const uid = localStorage.getItem("firebase_uid");
+    if (!uid) return;
+
+    socket.emit(
+      "deleteMessage",
+      { messageId, userUid: uid },
+      (res: { ok: boolean; error?: string }) => {
+        if (!res?.ok) {
+          console.error("deleteMessage error:", res?.error);
+          return;
+        }
+        setMessages((prev) => prev.filter((m) => m._id !== messageId));
+      }
+    );
+  };
+  const openDeleteModal = (id: string) => {
+    setConversationToDelete(id);
+    setShowDeleteModal(true);
+  };
+
+  const confirmDeleteConversation = () => {
+    if (!socket || !conversationToDelete) return;
+
+    const uid = localStorage.getItem("firebase_uid");
+    if (!uid) return;
+
+    setDeletingConversation(true);
+
+    socket.emit(
+      "deleteConversation",
+      { conversationId: conversationToDelete, userUid: uid },
+      (res: { ok: boolean; error?: string }) => {
+        setDeletingConversation(false);
+        if (!res?.ok) {
+          console.error("deleteConversation error:", res?.error);
+          return;
+        }
+
+        setConversations((prev) =>
+          prev.filter((c) => c._id !== conversationToDelete)
+        );
+
+        if (conversationId === conversationToDelete) {
+          router.push("/messages");
+        }
+
+        setShowDeleteModal(false);
+        setConversationToDelete(null);
+      }
+    );
   };
 
   return (
@@ -281,53 +341,79 @@ export default function ConversationPage() {
             )}
 
             {conversations.map((c) => (
-              <button
-                key={c._id}
-                type="button"
-                className={`${styles.conversationItem} ${
-                  c._id === conversationId ? styles.conversationItemActive : ""
-                } ${
-                  c.unread_count && c.unread_count > 0
-                    ? styles.conversationItemUnread
-                    : ""
-                }`}
-                onClick={() => handleSelectConversation(c._id)}
-              >
-                <div className={styles.conversationAvatar}>
-                  {c.otherUser?.profil_url && (
-                    <img
-                      src={c.otherUser.profil_url}
-                      alt={c.otherUser.username || ""}
-                    />
-                  )}
-                </div>
-
-                <div className={styles.conversationInfo}>
-                  <div className={styles.conversationTopRow}>
-                    <span className={styles.conversationName}>
-                      {c.otherUser?.name ||
-                        c.otherUser?.username ||
-                        "Unknown user"}
-                    </span>
-                    {c.lastMessageAt && (
-                      <span className={styles.conversationTime}>
-                        {new Date(c.lastMessageAt).toLocaleTimeString(
-                          "he-IL",
-                          { hour: "2-digit", minute: "2-digit" }
-                        )}
-                      </span>
+              <div key={c._id} className={styles.conversationRow}>
+                <button
+                  type="button"
+                  className={`${styles.conversationItem} ${
+                    c._id === conversationId
+                      ? styles.conversationItemActive
+                      : ""
+                  } ${
+                    c.unread_count && c.unread_count > 0
+                      ? styles.conversationItemUnread
+                      : ""
+                  }`}
+                  onClick={() => handleSelectConversation(c._id)}
+                >
+                  <div className={styles.conversationAvatar}>
+                    {c.otherUser?.profil_url && (
+                      <img
+                        src={c.otherUser.profil_url}
+                        alt={c.otherUser.username || ""}
+                      />
                     )}
                   </div>
-                  <div className={styles.conversationPreview}>
-                    {c.lastMessageText || "No messages yet"}
+                  <div className={styles.conversationInfo}>
+                    <div className={styles.conversationTopRow}>
+                      <span className={styles.conversationName}>
+                        {c.otherUser?.name ||
+                          c.otherUser?.username ||
+                          "Unknown user"}
+                      </span>
+                      {c.lastMessageAt && (
+                        <span className={styles.conversationTime}>
+                          {new Date(c.lastMessageAt).toLocaleTimeString(
+                            "he-IL",
+                            { hour: "2-digit", minute: "2-digit" }
+                          )}
+                        </span>
+                      )}
+                    </div>
+                    <div className={styles.conversationPreview}>
+                      {c.lastMessageText || "No messages yet"}
+                    </div>
                   </div>
-                </div>
-              </button>
+                </button>
+
+                <button
+                  type="button"
+                  className={styles.deleteBtn}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    openDeleteModal(c._id);
+                  }}
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className={styles.trashIcon}
+                  >
+                    <polyline points="3 6 5 6 21 6" />
+                    <path d="M19 6l-1 14H6L5 6" />
+                    <path d="M10 11v6" />
+                    <path d="M14 11v6" />
+                    <path d="M9 6V4h6v2" />
+                  </svg>
+                </button>
+              </div>
             ))}
           </div>
         </aside>
-
-        {/* CHAT PANE */}
         <section className={styles.chatPane}>
           {!conversationId && (
             <div className={styles.chatEmpty}>
@@ -344,9 +430,7 @@ export default function ConversationPage() {
                     {activeConversation?.otherUser?.profil_url && (
                       <img
                         src={activeConversation.otherUser.profil_url}
-                        alt={
-                          activeConversation.otherUser.username || ""
-                        }
+                        alt={activeConversation.otherUser.username || ""}
                       />
                     )}
                   </div>
@@ -370,6 +454,8 @@ export default function ConversationPage() {
               >
                 {messages.map((m) => {
                   const isMe = m.sender_uid === currentUid;
+                  const isEditing = editingMessageId === m._id;
+
                   return (
                     <div
                       key={m._id}
@@ -381,12 +467,40 @@ export default function ConversationPage() {
                         }
                       >
                         <div className={styles.messageText}>{m.text}</div>
-                        <div className={styles.messageTime}>
-                          {new Date(m.createdAt).toLocaleTimeString(
-                            "he-IL",
-                            { hour: "2-digit", minute: "2-digit" }
+
+                        <div className={styles.messageTimeRow}>
+                          <span className={styles.messageTime}>
+                            {new Date(m.createdAt).toLocaleTimeString(
+                              "he-IL",
+                              { hour: "2-digit", minute: "2-digit" }
+                            )}
+                          </span>
+
+                          {isMe && (
+                            <div className={styles.messageActions}>
+                              <button
+                                type="button"
+                                className={styles.messageActionBtn}
+                                onClick={() => startEditMessage(m)}
+                              >
+                                Edit
+                              </button>
+                              <button
+                                type="button"
+                                className={`${styles.messageActionBtn} ${styles.messageActionDelete}`}
+                                onClick={() => handleDeleteMessage(m._id)}
+                              >
+                                Delete
+                              </button>
+                            </div>
                           )}
                         </div>
+
+                        {isEditing && (
+                          <div className={styles.editBadge}>
+                            Editing this message
+                          </div>
+                        )}
                       </div>
                     </div>
                   );
@@ -419,7 +533,11 @@ export default function ConversationPage() {
 
                 <input
                   type="text"
-                  placeholder="Type your message..."
+                  placeholder={
+                    editingMessageId
+                      ? "Edit your message..."
+                      : "Type your message..."
+                  }
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   className={styles.input}
@@ -434,13 +552,52 @@ export default function ConversationPage() {
                       : styles.sendButton
                   }
                 >
-                  Send
+                  {editingMessageId ? "Save" : "Send"}
                 </button>
+                {editingMessageId && (
+                  <button
+                    type="button"
+                    className={styles.cancelEditBtn}
+                    onClick={cancelEdit}
+                  >
+                    Cancel
+                  </button>
+                )}
               </form>
             </div>
           )}
         </section>
       </div>
+      {showDeleteModal && (
+        <div className={styles.deleteModalOverlay}>
+          <div className={styles.deleteModal}>
+            <h3>Delete conversation?</h3>
+            <p>This action cannot be undone.</p>
+
+            <div className={styles.deleteModalActions}>
+              <button
+                type="button"
+                className={styles.cancelBtn}
+                onClick={() => {
+                  if (deletingConversation) return;
+                  setShowDeleteModal(false);
+                  setConversationToDelete(null);
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className={styles.confirmDeleteBtn}
+                onClick={confirmDeleteConversation}
+                disabled={deletingConversation}
+              >
+                {deletingConversation ? "Deleting..." : "Delete"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

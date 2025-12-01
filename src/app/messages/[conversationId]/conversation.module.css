@@ -139,8 +139,8 @@
 .chatPane {
   display: flex;
   flex-direction: column;
-  background: #e5e7eb;
-  height: 100%;         
+  background: #e5e7eb;           /* רקע עדין מאחורי הצ'אט */
+  padding: 16px 24px 20px;       /* קצת ריווח בצדדים */
 }
 
 
@@ -157,7 +157,7 @@
 .chatWindow {
   display: flex;
   flex-direction: column;
-  flex: 1;         
+  height: 100%;
 }
 
 
@@ -372,3 +372,211 @@
   overflow: hidden;
   background: #ffffff;
 }
+.chatHeaderInner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.deleteConversationBtn {
+  border: none;
+  background: #fee2e2;
+  color: #b91c1c;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.1s ease;
+}
+
+.deleteConversationBtn:hover {
+  background: #fecaca;
+  transform: translateY(-1px);
+}
+
+/* מודל מחיקה – יכול להיות דומה לזה של messages.module.css */
+.deleteModalOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(3px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+}
+
+.deleteModal {
+  background: #ffffff;
+  width: 320px;
+  padding: 22px;
+  border-radius: 16px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+  text-align: center;
+}
+
+.deleteModal h3 {
+  margin: 0 0 10px;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.deleteModal p {
+  margin-bottom: 20px;
+  font-size: 14px;
+  color: #374151;
+}
+
+.deleteModalActions {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+}
+
+.cancelBtn {
+  padding: 8px 16px;
+  border-radius: 10px;
+  background: #e5e7eb;
+  border: none;
+  cursor: pointer;
+}
+
+.cancelBtn:hover {
+  background: #d1d5db;
+}
+
+.confirmDeleteBtn {
+  padding: 8px 16px;
+  border-radius: 10px;
+  background: #dc2626;
+  color: white;
+  border: none;
+  cursor: pointer;
+}
+
+.confirmDeleteBtn:hover {
+  background: #b91c1c;
+}
+.conversationRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+}
+
+.deleteBtn {
+  background: transparent;
+  border: none;
+  color: #d11a2a;
+  padding: 6px;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: background 0.15s ease;
+}
+
+.deleteBtn:hover {
+  background: #ffe5e5;
+}
+
+.trashIcon {
+  width: 18px;
+  height: 18px;
+  pointer-events: none;
+}
+.messageTimeRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 6px;
+  margin-top: 2px;
+}
+
+.messageActions {
+  display: flex;
+  gap: 6px;
+}
+
+.messageActionBtn {
+  border: none;
+  background: transparent;
+  font-size: 11px;
+  cursor: pointer;
+  opacity: 0.8;
+}
+
+.messageActionBtn:hover {
+  opacity: 1;
+  text-decoration: underline;
+}
+
+.messageActionDelete {
+  color: #b91c1c;
+}
+
+.editBadge {
+  margin-top: 2px;
+  font-size: 10px;
+  opacity: 0.7;
+}
+.cancelEditBtn {
+  margin-left: 8px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  border: none;
+  background: #e5e7eb;
+  font-size: 13px;
+  cursor: pointer;
+}
+.cancelEditBtn:hover {
+  background: #d1d5db;
+}
+.messageTimeRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 6px;
+  margin-top: 2px;
+}
+.messageActions {
+  display: flex;
+  gap: 6px;
+}
+
+.messageActionBtn {
+  border: none;
+  background: transparent;
+  font-size: 11px;
+  cursor: pointer;
+  opacity: 0.8;
+}
+
+.messageActionBtn:hover {
+  opacity: 1;
+  text-decoration: underline;
+}
+.messageActionDelete {
+  color: #b91c1c;
+}
+
+.editBadge {
+  margin-top: 2px;
+  font-size: 10px;
+  opacity: 0.7;
+}
+.cancelEditBtn {
+  margin-left: 8px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  border: none;
+  background: #e5e7eb;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.cancelEditBtn:hover {
+  background: #d1d5db;
+}
+
+

@@ -254,6 +254,88 @@ const msgDoc = await MessageModel.create({
       }
     }
   );
+  socket.on("deleteConversation", async ({ conversationId, userUid }, callback) => {
+  try {
+    if (!conversationId || !userUid)
+      return callback({ ok: false, error: "Missing data" });
+
+    await Conversation.deleteOne({
+      _id: conversationId,
+      participants: { $in: [userUid] }
+    });
+
+    await Message.deleteMany({ conversation_id: conversationId });
+
+    callback({ ok: true });
+  } catch (e) {
+    callback({ ok: false, error: e.message });
+  }
+});
+io.on("connection", (socket) => {
+  socket.on(
+  "deleteMessage",
+  async (
+    { messageId, userUid }: { messageId: string; userUid: string },
+    callback
+  ) => {
+    try {
+      const msg: any = await (Message as any).findById(messageId as any);
+      if (!msg) {
+        return callback({ ok: true });
+      }
+
+      if (msg.sender_uid !== userUid) {
+        return callback({ ok: false, error: "Not allowed" });
+      }
+
+      await Message.deleteOne({ _id: messageId });
+
+      io.to(String(msg.conversation_id)).emit("messageDeleted", {
+        messageId,
+        conversationId: String(msg.conversation_id),
+      });
+
+      callback({ ok: true });
+    } catch (e: any) {
+      callback({ ok: false, error: e.message });
+    }
+  }
+);
+
+  socket.on(
+    "editMessage",
+    async (
+      {
+        messageId,
+        userUid,
+        text,
+      }: { messageId: string; userUid: string; text: string },
+      callback
+    ) => {
+      try {
+         const msg: any = await (Message as any).findById(messageId as any);
+        if (!msg) return callback({ ok: false, error: "Message not found" });
+
+        if (msg.sender_uid !== userUid) {
+          return callback({ ok: false, error: "Not allowed" });
+        }
+
+        msg.text = text;
+        await msg.save();
+
+        const plain = msg.toObject();
+        io.to(String(msg.conversation_id)).emit("messageEdited", {
+          message: plain,
+        });
+
+        callback({ ok: true, message: plain });
+      } catch (e: any) {
+        callback({ ok: false, error: e.message });
+      }
+    }
+  );
+});
+
   socket.on(
     "markConversationRead",
     async (payload: { conversationId?: string; userUid?: string }) => {
