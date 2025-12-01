@@ -268,24 +268,50 @@ export default function ConversationPage() {
     setEditingMessageId(null);
     setInput("");
   };
+ 
   const handleDeleteMessage = (messageId: string) => {
-    if (!socket) return;
+  if (!socket || !conversationId) return;
 
-    const uid = localStorage.getItem("firebase_uid");
-    if (!uid) return;
+  const uid = localStorage.getItem("firebase_uid");
+  if (!uid) return;
 
-    socket.emit(
-      "deleteMessage",
-      { messageId, userUid: uid },
-      (res: { ok: boolean; error?: string }) => {
-        if (!res?.ok) {
-          console.error("deleteMessage error:", res?.error);
-          return;
-        }
-        setMessages((prev) => prev.filter((m) => m._id !== messageId));
+  // שאלת אישור לפני מחיקה
+  const ok = window.confirm("האם את בטוחה שתרצי למחוק את ההודעה?");
+  if (!ok) return;
+
+  // מכינים מראש את רשימת ההודעות החדשה
+  const updatedMessages = messages.filter((m) => m._id !== messageId);
+  const last = updatedMessages[updatedMessages.length - 1];
+
+  socket.emit(
+    "deleteMessage",
+    { messageId, userUid: uid },
+    (res: { ok: boolean; error?: string }) => {
+      if (!res?.ok) {
+        console.error("deleteMessage error:", res?.error);
+        return;
       }
-    );
-  };
+
+      // 1. מעדכן את ההודעות בצ׳אט
+      setMessages(updatedMessages);
+
+      // 2. מעדכן את ההודעה האחרונה בשיחה בצד שמאל
+      setConversations((prevConvs) =>
+        prevConvs.map((c) =>
+          c._id === conversationId
+            ? {
+                ...c,
+                lastMessageText: last ? last.text : "",
+                lastMessageAt: last ? last.createdAt : undefined,
+              }
+            : c
+        )
+      );
+    }
+  );
+};
+
+
   const openDeleteModal = (id: string) => {
     setConversationToDelete(id);
     setShowDeleteModal(true);
@@ -568,6 +594,7 @@ export default function ConversationPage() {
           )}
         </section>
       </div>
+      
       {showDeleteModal && (
         <div className={styles.deleteModalOverlay}>
           <div className={styles.deleteModal}>
