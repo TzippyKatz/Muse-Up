@@ -6,6 +6,7 @@ import PostModel from "../../models/Post";
 import TrendingSection from "../components/TrendingSection";
 import ArtistsToFollowClient, { SimpleArtist } from "./ArtistsToFollowClient";
 import styles from "./landingPage.module.css";
+import mongoose from "mongoose";
 
 export default async function LandingPage() {
   await dbConnect();

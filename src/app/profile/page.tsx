@@ -362,7 +362,6 @@ export default function ProfilePage() {
         {[
           ["posts", "My Posts"],
           ["saved", "Saved"],
-          ["collections", "Collections"],
           ["challenge", "Challenge"],
           ["edit", "Edit"],
         ].map(([key, label]) => (

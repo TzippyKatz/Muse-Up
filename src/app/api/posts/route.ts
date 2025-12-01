@@ -4,7 +4,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { dbConnect } from "../../../lib/mongoose";
 import PostModel from "../../../models/Post";
 import User from "../../../models/User";
-import mongoose from "mongoose";
 
 export async function GET(req: NextRequest) {
   try {
@@ -16,15 +15,8 @@ export async function GET(req: NextRequest) {
     const filter: any = {};
 
     if (firebase_uid) {
-      // מוצאים את המשתמש לפי firebase_uid
-      const user = await User.findOne({ firebase_uid }).lean();
-
-      if (!user) {
-        return NextResponse.json([], { status: 200 });
-      }
-
-      // מסננים לפי user_id
-      filter.user_id = user._id;
+      // ❗ מסננים לפי firebase_uid ישירות
+      filter.user_id = firebase_uid;
     }
 
     const posts = await PostModel.find(filter)
@@ -33,22 +25,22 @@ export async function GET(req: NextRequest) {
 
     const populatedPosts = await Promise.all(
       posts.map(async (post: any) => {
-        let author = null;
+        let author = await User.findOne({ firebase_uid: post.user_id })
+          .lean()
+          .catch(() => null);
 
-        if (post.user_id && mongoose.isValidObjectId(post.user_id)) {
-          const user = await User.findById(post.user_id).lean().catch(() => null);
-
-          if (user) {
-            author = {
-              name: user.name,
-              avatar_url: user.avatar_url ?? user.profil_url ?? null,
-              followers_count: user.followers_count,
-              username: user.username,
-            };
-          }
-        }
-
-        return { ...post, author };
+        return {
+          ...post,
+          author:
+            author
+              ? {
+                  name: author.name,
+                  avatar_url: author.avatar_url ?? author.profil_url ?? null,
+                  followers_count: author.followers_count,
+                  username: author.username,
+                }
+              : null,
+        };
       })
     );
 
@@ -85,7 +77,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // מוצאים את המשתמש לפי firebase_uid
     const user = await User.findOne({ firebase_uid: user_uid }).lean();
     if (!user) {
       return NextResponse.json(
@@ -94,13 +85,11 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // יצירת ID מספרי אוטומטי (כמו הפוסטים הישנים)
     const lastPost = await PostModel.findOne().sort({ id: -1 }).lean();
     const nextId = lastPost?.id ? lastPost.id + 1 : 1;
 
-    // יצירת הפוסט
     const newPost = await PostModel.create({
-      id: nextId, // חשוב מאוד
+      id: nextId,
       title,
       body: content ?? "",
       image_url,
@@ -110,8 +99,10 @@ export async function POST(req: NextRequest) {
       status: "active",
       likes_count: 0,
       comments_count: 0,
+
+      // ❗ שומרים firebase_uid ולא ObjectId
+      user_id: user_uid,
       user_uid,
-      user_id: user._id,
       created_at: new Date(),
       updated_at: new Date(),
     });
