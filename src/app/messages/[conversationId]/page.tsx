@@ -59,6 +59,14 @@ export default function ConversationPage() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [conversationToDelete, setConversationToDelete] = useState<string | null>(null);
   const [deletingConversation, setDeletingConversation] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState<{
+  open: boolean;
+  messageId: string | null;
+}>({
+  open: false,
+  messageId: null,
+});
+
   useEffect(() => {
     if (!autoScrollRef.current) return;
     if (!bottomRef.current) return;
@@ -268,20 +276,20 @@ export default function ConversationPage() {
     setEditingMessageId(null);
     setInput("");
   };
- 
-  const handleDeleteMessage = (messageId: string) => {
-  if (!socket || !conversationId) return;
+
+const handleDeleteMessage = (messageId: string) => {
+  setConfirmDelete({
+    open: true,
+    messageId,
+  });
+};
+const performDeleteMessage = () => {
+  if (!socket || !conversationId || !confirmDelete.messageId) return;
 
   const uid = localStorage.getItem("firebase_uid");
   if (!uid) return;
 
-  // שאלת אישור לפני מחיקה
-  const ok = window.confirm("האם את בטוחה שתרצי למחוק את ההודעה?");
-  if (!ok) return;
-
-  // מכינים מראש את רשימת ההודעות החדשה
-  const updatedMessages = messages.filter((m) => m._id !== messageId);
-  const last = updatedMessages[updatedMessages.length - 1];
+  const messageId = confirmDelete.messageId;
 
   socket.emit(
     "deleteMessage",
@@ -289,24 +297,29 @@ export default function ConversationPage() {
     (res: { ok: boolean; error?: string }) => {
       if (!res?.ok) {
         console.error("deleteMessage error:", res?.error);
+        setConfirmDelete({ open: false, messageId: null });
         return;
       }
+      setMessages((prev) => {
+        const updated = prev.filter((m) => m._id !== messageId);
+        const last = updated[updated.length - 1];
 
-      // 1. מעדכן את ההודעות בצ׳אט
-      setMessages(updatedMessages);
+        setConversations((prevConvs) =>
+          prevConvs.map((c) =>
+            c._id === conversationId
+              ? {
+                  ...c,
+                  lastMessageText: last ? last.text : "",
+                  lastMessageAt: last ? last.createdAt : undefined,
+                }
+              : c
+          )
+        );
 
-      // 2. מעדכן את ההודעה האחרונה בשיחה בצד שמאל
-      setConversations((prevConvs) =>
-        prevConvs.map((c) =>
-          c._id === conversationId
-            ? {
-                ...c,
-                lastMessageText: last ? last.text : "",
-                lastMessageAt: last ? last.createdAt : undefined,
-              }
-            : c
-        )
-      );
+        return updated;
+      });
+
+      setConfirmDelete({ open: false, messageId: null });
     }
   );
 };
@@ -594,10 +607,40 @@ export default function ConversationPage() {
           )}
         </section>
       </div>
-      
+      {confirmDelete.open && (
+  <div className={styles.deleteModalOverlay}>
+    <div className={styles.deleteModal}>
+      <div className={styles.deleteModalIcon}>⚠️</div>
+      <h3>Delete message?</h3>
+            <p>This action cannot be undone.</p>
+
+      <div className={styles.deleteModalActions}>
+        <button
+          type="button"
+          className={`${styles.deleteModalButton} ${styles.deleteModalButtonConfirm}`}
+          onClick={performDeleteMessage}
+        >
+          Delete
+        </button>
+
+        <button
+          type="button"
+          className={`${styles.deleteModalButton} ${styles.deleteModalButtonCancel}`}
+          onClick={() =>
+            setConfirmDelete({ open: false, messageId: null })
+          }
+        >
+          Cancel
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+
       {showDeleteModal && (
         <div className={styles.deleteModalOverlay}>
           <div className={styles.deleteModal}>
+                 <div className={styles.deleteModalIcon}>⚠️</div>
             <h3>Delete conversation?</h3>
             <p>This action cannot be undone.</p>
 
@@ -626,5 +669,7 @@ export default function ConversationPage() {
         </div>
       )}
     </div>
+    
   );
+  
 }
