@@ -104,6 +104,11 @@ export function useConversationPage(conversationId: string | null) {
       });
     }, 0);
   };
+const closeDeleteConversationModal = () => {
+  if (deletingConversation) return;
+  setShowDeleteModal(false);
+  setConversationToDelete(null); // אם יש לך state כזה
+};
 
   const handleChatScroll = () => {
     const box = chatBoxRef.current;
@@ -463,5 +468,6 @@ export function useConversationPage(conversationId: string | null) {
     confirmDeleteConversation,
     closeDeleteMessageModal,
     getDateLabel,
+    closeDeleteConversationModal,
   };
 }
