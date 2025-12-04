@@ -84,8 +84,6 @@ export async function getSavedPostIds(uid: string): Promise<number[]> {
 }
 export async function getSavedPosts(uid: string): Promise<PostCard[]> {
   const ids = await getSavedPostIds(uid);
-
-  // שליפת כל פוסט בנפרד לפי id
   const posts = await Promise.all(
     ids.map(async (id) => {
       const res = await fetch(`/api/posts/${id}`);
@@ -95,4 +93,13 @@ export async function getSavedPosts(uid: string): Promise<PostCard[]> {
   );
 
   return posts.filter(Boolean) as PostCard[];
+}
+export async function deletePost(postId: string): Promise<void> {
+  const res = await fetch(`/api/posts/${postId}`, {
+    method: "DELETE",
+  });
+
+  if (!res.ok) {
+    throw new Error("Failed to delete post");
+  }
 }
