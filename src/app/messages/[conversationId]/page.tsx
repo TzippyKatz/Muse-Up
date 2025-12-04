@@ -4,11 +4,14 @@ import dynamic from "next/dynamic";
 import styles from "./conversation.module.css";
 import { Trash2, Pencil } from "lucide-react";
 import { useConversationPage } from "./useConversationPage";
+
 const EmojiPicker = dynamic(() => import("emoji-picker-react"), {
   ssr: false,
 }) as any;
+
 export default function ConversationPage() {
   const { conversationId } = useParams<{ conversationId: string }>();
+
   const {
     messages,
     conversations,
@@ -38,9 +41,12 @@ export default function ConversationPage() {
     confirmDeleteConversation,
     closeDeleteMessageModal,
     getDateLabel,
+    // הוספנו את זה:
+    closeDeleteConversationModal,
   } = useConversationPage(
     typeof conversationId === "string" ? conversationId : null
   );
+
   return (
     <div className={styles.page}>
       <div className={styles.layout}>
@@ -48,12 +54,12 @@ export default function ConversationPage() {
           <header className={styles.sidebarHeader}>
             <h1 className={styles.sidebarTitle}>Messages</h1>
           </header>
+
           <div className={styles.conversationsList}>
             {loadingConversations && (
-              <p className={styles.emptyState}>
-                Loading conversations…
-              </p>
+              <p className={styles.emptyState}>Loading conversations…</p>
             )}
+
             {!loadingConversations && conversations.length === 0 && (
               <p className={styles.emptyState}>No conversations yet.</p>
             )}
@@ -81,6 +87,7 @@ export default function ConversationPage() {
                       />
                     )}
                   </div>
+
                   <div className={styles.conversationInfo}>
                     <div className={styles.conversationTopRow}>
                       <span className={styles.conversationName}>
@@ -102,6 +109,7 @@ export default function ConversationPage() {
                     </div>
                   </div>
                 </button>
+
                 <button
                   type="button"
                   className={styles.deleteBtn}
@@ -116,6 +124,7 @@ export default function ConversationPage() {
             ))}
           </div>
         </aside>
+
         <section className={styles.chatPane}>
           {!conversationId && (
             <div className={styles.chatEmpty}>
@@ -123,6 +132,7 @@ export default function ConversationPage() {
               <p>Choose an artist to start chatting.</p>
             </div>
           )}
+
           {conversationId && (
             <div className={styles.chatWindow}>
               <header className={styles.chatHeader}>
@@ -131,9 +141,7 @@ export default function ConversationPage() {
                     {activeConversation?.otherUser?.profil_url && (
                       <img
                         src={activeConversation.otherUser.profil_url}
-                        alt={
-                          activeConversation.otherUser.username || ""
-                        }
+                        alt={activeConversation.otherUser.username || ""}
                       />
                     )}
                   </div>
@@ -149,28 +157,27 @@ export default function ConversationPage() {
                   </div>
                 </div>
               </header>
+
               <div
                 className={styles.chatBox}
                 ref={chatBoxRef}
                 onScroll={handleChatScroll}
               >
                 {messages.map((m, index) => {
-                  const isMe = m.sender_uid ===
+                  const isMe =
+                    m.sender_uid ===
                     (typeof window !== "undefined"
                       ? localStorage.getItem("firebase_uid")
                       : "");
                   const isEditing = editingMessageId === m._id;
-                  const currentDate = new Date(
-                    m.createdAt
-                  ).toDateString();
+
+                  const currentDate = new Date(m.createdAt).toDateString();
                   const prevDate =
                     index > 0
-                      ? new Date(
-                          messages[index - 1].createdAt
-                        ).toDateString()
+                      ? new Date(messages[index - 1].createdAt).toDateString()
                       : null;
-                  const shouldShowDate =
-                    index === 0 || currentDate !== prevDate;
+                  const shouldShowDate = index === 0 || currentDate !== prevDate;
+
                   return (
                     <div key={m._id}>
                       {shouldShowDate && (
@@ -178,21 +185,17 @@ export default function ConversationPage() {
                           {getDateLabel(m.createdAt)}
                         </div>
                       )}
+
                       <div
-                        className={
-                          isMe ? styles.rowMe : styles.rowOther
-                        }
+                        className={isMe ? styles.rowMe : styles.rowOther}
                       >
                         <div
                           className={
-                            isMe
-                              ? styles.bubbleMe
-                              : styles.bubbleOther
+                            isMe ? styles.bubbleMe : styles.bubbleOther
                           }
                         >
-                          <div className={styles.messageText}>
-                            {m.text}
-                          </div>
+                          <div className={styles.messageText}>{m.text}</div>
+
                           <div className={styles.messageTimeRow}>
                             <span className={styles.messageTime}>
                               {new Date(
@@ -202,10 +205,9 @@ export default function ConversationPage() {
                                 minute: "2-digit",
                               })}
                             </span>
+
                             {isMe && (
-                              <div
-                                className={styles.messageActions}
-                              >
+                              <div className={styles.messageActions}>
                                 <button
                                   type="button"
                                   className={styles.messageActionBtn}
@@ -225,6 +227,7 @@ export default function ConversationPage() {
                               </div>
                             )}
                           </div>
+
                           {isEditing && (
                             <div className={styles.editBadge}>
                               Editing this message
@@ -237,10 +240,8 @@ export default function ConversationPage() {
                 })}
                 <div ref={bottomRef} />
               </div>
-              <form
-                className={styles.inputRow}
-                onSubmit={handleSend}
-              >
+
+              <form className={styles.inputRow} onSubmit={handleSend}>
                 <div className={styles.emojiWrapper}>
                   <button
                     type="button"
@@ -252,12 +253,14 @@ export default function ConversationPage() {
                   >
                     😊
                   </button>
+
                   {showEmojiPicker && (
                     <div className={styles.emojiPicker}>
                       <EmojiPicker onEmojiClick={handleEmojiClick} />
                     </div>
                   )}
                 </div>
+
                 <input
                   type="text"
                   placeholder={
@@ -269,6 +272,7 @@ export default function ConversationPage() {
                   onChange={(e) => setInput(e.target.value)}
                   className={styles.input}
                 />
+
                 <button
                   type="submit"
                   disabled={isSendDisabled}
@@ -280,6 +284,7 @@ export default function ConversationPage() {
                 >
                   {editingMessageId ? "Save" : "Send"}
                 </button>
+
                 {editingMessageId && (
                   <button
                     type="button"
@@ -329,9 +334,8 @@ export default function ConversationPage() {
               <button
                 type="button"
                 className={styles.cancelBtn}
-                onClick={() => {
-                  if (deletingConversation) return;
-                }}
+                onClick={closeDeleteConversationModal} 
+                disabled={deletingConversation}
               >
                 Cancel
               </button>
