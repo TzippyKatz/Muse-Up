@@ -1,11 +1,8 @@
 "use client";
-
 import Image from "next/image";
 import styles from "./following.module.css";
-
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useFirebaseUid } from "../../hooks/useFirebaseUid";
-
 import {
   getFollowingForUser,
   toggleFollowUser,
@@ -14,11 +11,9 @@ import {
 type FollowingUser = SimpleUser & {
   firebase_uid?: string;
 };
-
 export default function FollowingPage() {
   const queryClient = useQueryClient();
   const { uid: currentUserId, ready: uidReady } = useFirebaseUid();
-
   const {
     data: followingUsers = [],
     isLoading,
@@ -28,17 +23,11 @@ export default function FollowingPage() {
     queryFn: () => getFollowingForUser(currentUserId as string),
     enabled: uidReady && !!currentUserId,
   });
-
   const unfollowMutation = useMutation({
     mutationFn: async (targetUser: FollowingUser) => {
       if (!currentUserId) throw new Error("No current user");
-      await toggleFollowUser(
-        currentUserId,
-        targetUser.firebase_uid,
-        true 
-      );
+      await toggleFollowUser(currentUserId, targetUser.firebase_uid, true);
     },
-
     onSuccess: (_data, targetUser) => {
       queryClient.setQueryData<FollowingUser[]>(
         ["following-users", currentUserId],
@@ -46,7 +35,6 @@ export default function FollowingPage() {
       );
     },
   });
-
   if (!uidReady || isLoading) {
     return (
       <div className={styles.container}>
@@ -55,7 +43,6 @@ export default function FollowingPage() {
       </div>
     );
   }
-
   if (!currentUserId) {
     return (
       <div className={styles.container}>
@@ -64,7 +51,6 @@ export default function FollowingPage() {
       </div>
     );
   }
-
   if (error) {
     return (
       <div className={styles.container}>
@@ -73,11 +59,9 @@ export default function FollowingPage() {
       </div>
     );
   }
-
   return (
     <div className={styles.container}>
       <h1 className={styles.title}>Following</h1>
-
       {followingUsers.length === 0 ? (
         <p>את לא עוקבת אחרי אף אחד כרגע.</p>
       ) : (
@@ -94,6 +78,7 @@ export default function FollowingPage() {
                   alt={user.username || "user avatar"}
                   width={72}
                   height={72}
+                  className={styles.avatarImage}
                 />
               </div>
 
