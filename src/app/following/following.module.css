@@ -1,6 +1,8 @@
 .container {
   font-family: var(--font-main);
-  padding: 40px 60px 40px 40px;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 40px 40px 40px 40px;
 }
 
 .title {
@@ -9,25 +11,11 @@
   margin-bottom: 30px;
 }
 
-
 .cards {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
   gap: 24px;
 }
-
-@media (max-width: 1100px) {
-  .cards {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-
-@media (max-width: 700px) {
-  .cards {
-    grid-template-columns: repeat(1, 1fr);
-  }
-}
-
 
 .card {
   background: #ffffff;
@@ -38,6 +26,8 @@
   display: flex;
   align-items: center;
   gap: 16px;
+  box-sizing: border-box;
+  overflow: hidden;              
   transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
@@ -46,17 +36,25 @@
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.1);
 }
 
-
 .avatarWrapper {
+  width: 72px;
+  height: 72px;
+  border-radius: 999px;
+  overflow: hidden;
   flex-shrink: 0;
+  background: #f7f8fc;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 12px;
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.12);
 }
 
-.avatar {
-  border-radius: 50%;
+.avatarImage {
+  width: 100%;
+  height: 100%;
   object-fit: cover;
-  border: 2px solid #f0f0f0;
 }
-
 
 .info {
   flex: 1;
@@ -69,6 +67,7 @@
   display: flex;
   align-items: baseline;
   gap: 8px;
+  flex-wrap: wrap;
 }
 
 .name {
@@ -88,73 +87,109 @@
 
 .actions {
   flex-shrink: 0;
+  margin-left: auto;
 }
 
 .button {
   padding: 8px 20px;
-  border-radius: 100px;
+  border-radius: 999px;
   border: none;
-  background: linear-gradient(135deg, #007bff, #5a8dff);
-  color: #fff;
+  background: #eaeaea;
+  color: #333;
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
   white-space: nowrap;
-  transition: background 0.2s ease, transform 0.1s ease,
-    box-shadow 0.2s ease;
+  transition:
+    background 0.2s ease,
+    transform 0.1s ease,
+    box-shadow 0.2s ease,
+    color 0.2s ease;
 }
 
 .button:hover {
-  background: linear-gradient(135deg, #005fcc, #466dff);
-  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.15);
+  background: #ffdddd;
+  color: #c70000;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.12);
   transform: translateY(-1px);
 }
 
-.buttonFollowing {
-  background: #eaeaea;
-  color: #333;
-  border: 1px solid #d0d0d0;
+
+@media (max-width: 700px) {
+  .container {
+    padding: 24px 16px 32px;
+  }
+
+  .cards {
+    gap: 16px;
+  }
+
+  .card {
+    padding: 14px 14px;
+    gap: 12px;
+    align-items: flex-start;
+    flex-wrap: wrap;        
+  }
+
+  .avatarWrapper {
+    width: 56px;
+    height: 56px;
+  }
+
+  .name {
+    font-size: 16px;
+  }
+
+  .bio {
+    font-size: 13px;
+  }
+
+  /* כאן אנחנו “מפרקים” את הכפתור לשורה חדשה */
+  .actions {
+    width: 100%;               /* לוקח שורה שלמה */
+    margin-left: 0;            /* מבטל את auto מהדסקטופ */
+    display: flex;
+    justify-content: flex-end; /* הכפתור בצד ימין */
+    margin-top: 6px;
+  }
+
+  .button {
+    padding: 6px 14px;
+    font-size: 13px;
+  }
 }
 
-.buttonFollowing:hover {
-  background: #ffdddd;
-  color: #c70000;
-  border-color: #c70000;
+@media (max-width: 1100px) {
+  .container {
+    padding: 32px 24px 32px;
+  }
 }
 
+@media (max-width: 700px) {
+  .container {
+    padding: 24px 16px 32px;
+  }
 
+  .card {
+    padding: 14px 14px;
+    gap: 12px;
+  }
 
-.avatarWrapper {
-  width: 72px;
-  height: 72px;
-  border-radius: 999px;
-  overflow: hidden;
-  flex-shrink: 0;
-  background: #f7f8fc;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-right: 16px;
-  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.12);
-}
+  .avatarWrapper {
+    width: 56px;
+    height: 56px;
+  }
 
-.avatarImage {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
+  .name {
+    font-size: 16px;
+  }
 
-.card {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 18px 22px;
-  border-radius: 18px;
-  background: #ffffff;
-  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
-}
+  .bio {
+    font-size: 13px;
+  }
 
-.info {
-  flex: 1;
-  margin: 0 16px;
+  .button {
+    padding: 6px 14px;
+    font-size: 13px;
+  }
 }

@@ -154,9 +154,6 @@
   margin-bottom: 4px;
 }
 
-/* ---------------------------
-   MERGED FROM MAIN
----------------------------- */
 
 .chatWindow {
   display: flex;
@@ -165,9 +162,6 @@
   min-height: 0;
 }
 
-/* ---------------------------
-   DELETE BUTTONS
----------------------------- */
 
 .conversationRow {
   display: flex;
@@ -190,9 +184,6 @@
   background: #ffe5e5;
 }
 
-/* ---------------------------
-   DELETE MODAL (tzippy + main)
----------------------------- */
 
 .deleteModalOverlay {
   position: fixed;
@@ -263,9 +254,6 @@
   pointer-events: none;
 }
 
-/* ---------------------------
-   RESPONSIVE MERGED
----------------------------- */
 
 @media (max-width: 900px) {
   .layout {
@@ -283,6 +271,6 @@
   }
 
   .chatPane {
-    display: none; /* tzippy version */
+    display: none; 
   }
 }
