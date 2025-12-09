@@ -30,6 +30,7 @@ function formatDate(dateStr: string | undefined) {
     day: "2-digit",
   });
 }
+
 export default function AdminChallengesPage() {
   const queryClient = useQueryClient();
 
@@ -48,7 +49,9 @@ export default function AdminChallengesPage() {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [imageUploading, setImageUploading] = useState(false);
   const [imageError, setImageError] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<Challenge | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+
   const {
     data: challenges,
     isLoading,
@@ -57,6 +60,7 @@ export default function AdminChallengesPage() {
     queryKey: ["adminChallenges"],
     queryFn: getAdminChallenges,
   });
+
   const createMutation = useMutation({
     mutationFn: createAdminChallengeApi,
     onSuccess: () => {
@@ -73,6 +77,7 @@ export default function AdminChallengesPage() {
       setIsFormOpen(false);
     },
   });
+
   const winnersMutation = useMutation({
     mutationFn: updateAdminWinners,
     onSuccess: () => {
@@ -86,27 +91,31 @@ export default function AdminChallengesPage() {
       setWinners([]);
     },
   });
-const deleteMutation = useMutation({
-  mutationFn: deleteAdminChallenge,
-  onSuccess: () => {
-    queryClient.invalidateQueries({ queryKey: ["adminChallenges"] });
-  },
-  onError: (error: any) => {
-    alert(error?.message || "Failed to delete challenge");
-  },
-});
 
+  const deleteMutation = useMutation({
+    mutationFn: deleteAdminChallenge,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["adminChallenges"] });
+    },
+    onError: (error: any) => {
+      alert(error?.message || "Failed to delete challenge");
+    },
+  });
 
-const handleDeleteChallenge = (ch: Challenge) => {
-  if (
-    !window.confirm(
-      `למחוק את האתגר "${ch.title}"? הפעולה בלתי הפיכה.`
-    )
-  ) {
-    return;
-  }
-  deleteMutation.mutate(String(ch.id));
-};                           
+  const handleDeleteChallenge = (ch: Challenge) => {
+    setDeleteTarget(ch);
+  };
+
+  const confirmDelete = () => {
+    if (!deleteTarget) return;
+    deleteMutation.mutate(String(deleteTarget.id));
+    setDeleteTarget(null);
+  };
+
+  const cancelDelete = () => {
+    setDeleteTarget(null);
+  };
+
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
   ) => {
@@ -116,6 +125,7 @@ const handleDeleteChallenge = (ch: Challenge) => {
       [name]: value,
     }));
   };
+
   const handleImageFileChange = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -139,6 +149,7 @@ const handleDeleteChallenge = (ch: Challenge) => {
       e.target.value = "";
     }
   };
+
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
     if (!form.title || !form.start_date || !form.end_date) {
@@ -147,17 +158,20 @@ const handleDeleteChallenge = (ch: Challenge) => {
     }
     createMutation.mutate(form);
   };
+
   const openWinnersModal = (challenge: Challenge) => {
     setSelectedChallenge(challenge);
     setWinners([]);
     setIsWinnersOpen(true);
   };
+
   const closeWinnersModal = () => {
     if (winnersMutation.isPending) return;
     setIsWinnersOpen(false);
     setSelectedChallenge(null);
     setWinners([]);
   };
+
   const selectPlace = (submission: Submission, place: 1 | 2 | 3) => {
     setWinners((prev) => {
       const filtered = prev.filter(
@@ -173,8 +187,10 @@ const handleDeleteChallenge = (ch: Challenge) => {
       ];
     });
   };
+
   const isSelected = (submissionId: string, place: 1 | 2 | 3) =>
     winners.some((w) => w.submission_id === submissionId && w.place === place);
+
   const renderError = () => {
     if (!error) return null;
     const msg = error.message || "";
@@ -190,18 +206,19 @@ const handleDeleteChallenge = (ch: Challenge) => {
     }
     return (
       <div className={styles.errorBox}>
-        <p>אירעה שגיאה בטעינת האתגרים.</p>
+        <p>An error occurred while loading challenges.</p>
         <p>{msg}</p>
       </div>
     );
   };
+
   return (
     <div className={styles.page}>
       <div className={styles.headerRow}>
         <div>
-          <h1 className={styles.title}>ניהול אתגרים</h1>
+          <h1 className={styles.title}>Challenges management</h1>
           <p className={styles.subtitle}>
-            כאן את יכולה ליצור אתגרים חדשים, ולעקוב אחרי מצב האתגרים הקיימים.
+            Here you can create new challenges and track the existing ones.
           </p>
         </div>
         <button
@@ -209,40 +226,41 @@ const handleDeleteChallenge = (ch: Challenge) => {
           className={styles.primaryButton}
           onClick={() => setIsFormOpen((prev) => !prev)}
         >
-          {isFormOpen ? "סגירת טופס יצירה" : "צור אתגר חדש"}
+          {isFormOpen ? "Close create form" : "Create new challenge"}
         </button>
       </div>
+
       {isFormOpen && (
         <form className={styles.formCard} onSubmit={handleSubmit}>
-          <h2 className={styles.formTitle}>אתגר חדש</h2>
+          <h2 className={styles.formTitle}>New challenge</h2>
           <div className={styles.formRow}>
             <label className={styles.label}>
-              שם האתגר
+              Challenge name
               <input
                 type="text"
                 name="title"
                 value={form.title}
                 onChange={handleChange}
                 className={styles.input}
-                placeholder="לדוגמה: פורטרט בשחור־לבן"
+                placeholder="e.g., Black & white portrait"
               />
             </label>
           </div>
           <div className={styles.formRow}>
             <label className={styles.label}>
-              תיאור
+              Description
               <textarea
                 name="description"
                 value={form.description}
                 onChange={handleChange}
                 className={styles.textarea}
-                placeholder="כמה מילים על מטרת האתגר, כללים, וכו׳"
+                placeholder="A few words about the goal, rules, etc."
               />
             </label>
           </div>
           <div className={styles.formRow}>
             <label className={styles.label}>
-              תמונה לאתגר (אופציונלי)
+              Challenge image (optional)
               <div className={styles.imageUploadRow}>
                 <button
                   type="button"
@@ -251,10 +269,10 @@ const handleDeleteChallenge = (ch: Challenge) => {
                   disabled={imageUploading}
                 >
                   {imageUploading
-                    ? "מעלה תמונה…"
+                    ? "Uploading image…"
                     : form.picture_url
-                    ? "החלפת תמונה"
-                    : "בחרי תמונה מהמחשב"}
+                    ? "Change image"
+                    : "Choose image from your computer"}
                 </button>
                 <input
                   ref={fileInputRef}
@@ -265,7 +283,7 @@ const handleDeleteChallenge = (ch: Challenge) => {
                 />
                 {form.picture_url && !imageUploading && (
                   <span className={styles.uploadHint}>
-                    התמונה נשמרה בהצלחה
+                    Image uploaded successfully
                   </span>
                 )}
               </div>
@@ -285,7 +303,7 @@ const handleDeleteChallenge = (ch: Challenge) => {
           </div>
           <div className={styles.formRowGrid}>
             <label className={styles.label}>
-              תאריך התחלה
+              Start date
               <input
                 type="date"
                 name="start_date"
@@ -295,7 +313,7 @@ const handleDeleteChallenge = (ch: Challenge) => {
               />
             </label>
             <label className={styles.label}>
-              תאריך סיום
+              End date
               <input
                 type="date"
                 name="end_date"
@@ -312,14 +330,14 @@ const handleDeleteChallenge = (ch: Challenge) => {
               onClick={() => setIsFormOpen(false)}
               disabled={createMutation.isPending}
             >
-              ביטול
+              Cancel
             </button>
             <button
               type="submit"
               className={styles.primaryButton}
               disabled={createMutation.isPending || imageUploading}
             >
-              {createMutation.isPending ? "שומרת..." : "שמור אתגר"}
+              {createMutation.isPending ? "Saving…" : "Save challenge"}
             </button>
           </div>
           {createMutation.error && (
@@ -329,15 +347,18 @@ const handleDeleteChallenge = (ch: Challenge) => {
           )}
         </form>
       )}
+
       {isLoading && !error && (
-        <div className={styles.loading}>טוען אתגרים…</div>
+        <div className={styles.loading}>Loading challenges…</div>
       )}
+
       {renderError()}
+
       {!isLoading && !error && challenges && (
         <div className={styles.list}>
           {challenges.length === 0 && (
             <div className={styles.emptyState}>
-              עדיין לא יצרת אתגרים. לחצי על &quot;צור אתגר חדש&quot; כדי להתחיל.
+              You haven't created any challenges yet. Click &quot;Create new challenge&quot; to get started.
             </div>
           )}
           {challenges.map((ch) => (
@@ -348,10 +369,10 @@ const handleDeleteChallenge = (ch: Challenge) => {
                     {ch.title} <span className={styles.cardId}>#{ch.id}</span>
                   </h3>
                   <p className={styles.cardStatus}>
-                    סטטוס: <span>{ch.status}</span>
+                    Status: <span>{ch.status}</span>
                     {ch.winners_published && (
                       <span className={styles.publishedBadge}>
-                        · הזוכים פורסמו
+                        · Winners published
                       </span>
                     )}
                   </p>
@@ -374,24 +395,23 @@ const handleDeleteChallenge = (ch: Challenge) => {
               )}
 
               <div className={styles.cardActions}>
-      <button
-        type="button"
-        className={styles.outlineButtonActive}
-        onClick={() => openWinnersModal(ch)}
-      >
-        ניהול זוכים
-      </button>
+                <button
+                  type="button"
+                  className={styles.outlineButtonActive}
+                  onClick={() => openWinnersModal(ch)}
+                >
+                  Manage winners
+                </button>
 
-      <button
-        type="button"
-        className={styles.dangerButton}
-        onClick={() => handleDeleteChallenge(ch)}
-        disabled={deleteMutation.isPending}
-      >
-        מחיקת אתגר
-      </button>
-    </div>
-
+                <button
+                  type="button"
+                  className={styles.dangerButton}
+                  onClick={() => handleDeleteChallenge(ch)}
+                  disabled={deleteMutation.isPending}
+                >
+                  Delete challenge
+                </button>
+              </div>
             </div>
           ))}
         </div>
@@ -407,9 +427,37 @@ const handleDeleteChallenge = (ch: Challenge) => {
           winnersMutation={winnersMutation}
         />
       )}
+
+      {deleteTarget && (
+        <div className={styles.modalOverlay}>
+          <div className={styles.confirmModal}>
+            <h3 className={styles.confirmTitle}>Delete challenge?</h3>
+            <p className={styles.confirmText}>This action cannot be undone.</p>
+            <div className={styles.confirmActions}>
+              <button
+                type="button"
+                className={styles.confirmCancel}
+                onClick={cancelDelete}
+                disabled={deleteMutation.isPending}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className={styles.confirmDelete}
+                onClick={confirmDelete}
+                disabled={deleteMutation.isPending}
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+
 type WinnersModalProps = {
   challenge: Challenge;
   onClose: () => void;
@@ -426,6 +474,7 @@ type WinnersModalProps = {
     }) => void;
   };
 };
+
 function WinnersModal({
   challenge,
   onClose,
@@ -438,9 +487,10 @@ function WinnersModal({
     queryKey: ["adminChallengeSubmissions", challenge.id],
     queryFn: () => getChallengeSubmissions(challenge.id),
   });
+
   const handleSave = () => {
     if (!winners || winners.length === 0) {
-      alert("בחרי לפחות זוכה אחד לפני השמירה.");
+      alert("Please select at least one winner before saving.");
       return;
     }
     winnersMutation.mutate({
@@ -449,16 +499,17 @@ function WinnersModal({
       publish: true,
     });
   };
+
   return (
     <div className={styles.modalOverlay}>
       <div className={styles.modal}>
         <div className={styles.modalHeader}>
           <div>
             <h2 className={styles.modalTitle}>
-              ניהול זוכים – {challenge.title}
+              Manage winners – {challenge.title}
             </h2>
             <p className={styles.modalSubtitle}>
-              בחרי מקום 1, 2 ו־3 מתוך ההגשות שהוגשו לאתגר.
+              Select 1st, 2nd and 3rd place from the submissions for this challenge.
             </p>
           </div>
           <button
@@ -471,18 +522,18 @@ function WinnersModal({
           </button>
         </div>
 
-        {isLoading && <div className={styles.loading}>טוען הגשות…</div>}
+        {isLoading && <div className={styles.loading}>Loading submissions…</div>}
 
         {error && (
           <div className={styles.errorBox}>
-            <p>אירעה שגיאה בטעינת ההגשות.</p>
+            <p>An error occurred while loading submissions.</p>
             <p>{error.message}</p>
           </div>
         )}
 
         {!isLoading && !error && data && data.length === 0 && (
           <div className={styles.emptyState}>
-            עדיין אין הגשות לאתגר הזה.
+            There are no submissions for this challenge yet.
           </div>
         )}
 
@@ -528,7 +579,7 @@ function WinnersModal({
                         }
                         onClick={() => selectPlace(sub, 1)}
                       >
-                        מקום 1
+                        Place 1
                       </button>
                       <button
                         type="button"
@@ -539,7 +590,7 @@ function WinnersModal({
                         }
                         onClick={() => selectPlace(sub, 2)}
                       >
-                        מקום 2
+                        Place 2
                       </button>
                       <button
                         type="button"
@@ -550,7 +601,7 @@ function WinnersModal({
                         }
                         onClick={() => selectPlace(sub, 3)}
                       >
-                        מקום 3
+                        Place 3
                       </button>
                     </div>
                   </div>
@@ -567,7 +618,7 @@ function WinnersModal({
             onClick={onClose}
             disabled={winnersMutation.isPending}
           >
-            ביטול
+            Cancel
           </button>
           <button
             type="button"
@@ -576,8 +627,8 @@ function WinnersModal({
             disabled={winnersMutation.isPending || winners.length === 0}
           >
             {winnersMutation.isPending
-              ? "שומרת ומפרסמת…"
-              : "שמור זוכים ופרסום"}
+              ? "Saving & publishing…"
+              : "Save winners & publish"}
           </button>
         </div>
 
