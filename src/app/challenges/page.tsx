@@ -16,6 +16,7 @@ import {
   leaveChallenge,
   submitChallengeImage,
 } from "../../services/challengeSubmissionsService";
+import { getUserByUid } from "../../services/userService";
 
 export type Challenge = {
   _id: string;
@@ -28,9 +29,9 @@ export type Challenge = {
   end_date?: string;
   winners_published?: boolean;
   winners?: {
-    user_id: string;      
-    submission_id: string;  
-    place: number;         
+    user_id: string;
+    submission_id: string;
+    place: number;
     user?: {
       firebase_uid: string;
       username?: string;
@@ -54,12 +55,18 @@ export default function ChallengesPage() {
   const [tab, setTab] = useState<TabKey>("active");
   const [search, setSearch] = useState("");
   const [joinLoadingId, setJoinLoadingId] = useState<number | null>(null);
-  const [selectedChallenge, setSelectedChallenge] = useState<Challenge | null>(
-    null
-  );
+  const [selectedChallenge, setSelectedChallenge] =
+    useState<Challenge | null>(null);
 
   const queryClient = useQueryClient();
   const { uid, ready: uidReady } = useFirebaseUid();
+  const { data: currentUser } = useQuery({
+    queryKey: ["currentUser", uid],
+    queryFn: () => getUserByUid(uid as string),
+    enabled: uidReady && !!uid,
+  });
+
+  const isAdmin = currentUser?.role === "admin";
 
   const {
     data: challenges = [],
@@ -128,12 +135,9 @@ export default function ChallengesPage() {
       alert("You must be logged in.");
       return;
     }
-
     const isJoined = joinedIds.includes(challengeId);
     setJoinLoadingId(challengeId);
-
     const mutation = isJoined ? leaveMutation : joinMutation;
-
     mutation.mutate(challengeId, {
       onError: (err: any) => {
         console.error(err);
@@ -162,12 +166,28 @@ export default function ChallengesPage() {
         <div className={styles.headerRow}>
           <h1 className={styles.title}>Art Challenges</h1>
 
-          <input
-            className={styles.search}
-            placeholder="Search challenges by name"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
+          <div
+            style={{ display: "flex", gap: "12px", alignItems: "center" }}
+          >
+            <input
+              className={styles.search}
+              placeholder="Search challenges by name"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+
+            {isAdmin && (
+              <button
+                type="button"
+                className={styles.adminButton}
+                onClick={() => {
+                  window.location.href = "/admin/challenges";
+                }}
+              >
+                Challenge management
+              </button>
+            )}
+          </div>
         </div>
 
         <div className={styles.tabs}>
@@ -236,7 +256,7 @@ export default function ChallengesPage() {
               <img
                 src={selectedChallenge.picture_url}
                 alt={selectedChallenge.title}
-              className={styles.modalImage}
+                className={styles.modalImage}
               />
             )}
 
@@ -251,8 +271,6 @@ export default function ChallengesPage() {
                 {selectedChallenge.description}
               </p>
             )}
-
-            {/* הצגת הזוכים במודאל אם פורסמו */}
             {selectedChallenge.winners_published &&
               selectedChallenge.winners &&
               selectedChallenge.winners.length > 0 && (
@@ -449,7 +467,6 @@ function ChallengeCard({
           <p className={styles.cardDescription}>{challenge.description}</p>
         )}
 
-        {/* Badge קטן שמראה שהזוכים כבר פורסמו */}
         {challenge.winners_published &&
           challenge.winners &&
           challenge.winners.length > 0 && (
@@ -579,7 +596,6 @@ function filterByTabAndSearch(
 
   return withDates;
 }
-
 
 function formatDate(d: Date) {
   return d.toLocaleDateString("en-GB", {

@@ -408,3 +408,20 @@
   border-radius: 999px;
   object-fit: cover;
 }
+.adminButton {
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: 1px solid #2563eb;
+  background: #2563eb;
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s ease, transform 0.05s ease;
+}
+
+.adminButton:hover {
+  background: #1d4ed8;
+  transform: translateY(-1px);
+}
