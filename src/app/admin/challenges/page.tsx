@@ -1,5 +1,10 @@
 "use client";
-import { useState, FormEvent } from "react";
+import {
+  useState,
+  FormEvent,
+  ChangeEvent,
+  useRef,
+} from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import styles from "./adminChallenges.module.css";
 type Challenge = {
@@ -49,6 +54,7 @@ async function fetchAdminChallenges(): Promise<Challenge[]> {
   }
   return data;
 }
+
 async function createAdminChallenge(
   payload: NewChallengePayload
 ): Promise<Challenge> {
@@ -59,12 +65,16 @@ async function createAdminChallenge(
     },
     body: JSON.stringify(payload),
   });
+
   const data = await res.json().catch(() => ({}));
+
   if (!res.ok) {
     throw new Error(data?.message || "Failed to create challenge");
   }
+
   return data;
 }
+
 async function fetchChallengeSubmissions(
   challengeId: number
 ): Promise<Submission[]> {
@@ -75,12 +85,16 @@ async function fetchChallengeSubmissions(
       cache: "no-store",
     }
   );
+
   const data = await res.json().catch(() => ({}));
+
   if (!res.ok) {
     throw new Error(data?.message || "Failed to load submissions");
   }
+
   return data;
 }
+
 async function updateWinners(params: {
   challengeId: number;
   winners: WinnerPayload[];
@@ -97,12 +111,44 @@ async function updateWinners(params: {
       status: "ended",
     }),
   });
+
   const data = await res.json().catch(() => ({}));
+
   if (!res.ok) {
     throw new Error(data?.message || "Failed to update winners");
   }
+
   return data;
 }
+
+async function uploadImage(file: File): Promise<string> {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  // אם בראוט הקיים שלך הנתיב הוא אחר (למשל /api/image-upload),
+  // תחליפי כאן את "/api/upload" ל־URL שבו את כבר משתמשת בפרויקט.
+  const res = await fetch("/api/uploads", {
+    method: "POST",
+    body: formData,
+  });
+
+  const data: any = await res.json().catch(() => ({}));
+
+  if (!res.ok) {
+    throw new Error(data?.message || "Failed to upload image");
+  }
+
+  // תומך גם ב-response שמחזיר { url: "..." } וגם { secure_url: "..." }
+  const imageUrl = data.url || data.secure_url;
+
+  if (!imageUrl) {
+    throw new Error("Upload response missing url");
+  }
+
+  return imageUrl as string;
+}
+
+
 function formatDate(dateStr: string | undefined) {
   if (!dateStr) return "";
   const d = new Date(dateStr);
@@ -113,8 +159,12 @@ function formatDate(dateStr: string | undefined) {
     day: "2-digit",
   });
 }
+
+// ===== main page =====
+
 export default function AdminChallengesPage() {
   const queryClient = useQueryClient();
+
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [form, setForm] = useState<NewChallengePayload>({
     title: "",
@@ -123,10 +173,18 @@ export default function AdminChallengesPage() {
     start_date: "",
     end_date: "",
   });
+
   const [selectedChallenge, setSelectedChallenge] =
     useState<Challenge | null>(null);
   const [isWinnersOpen, setIsWinnersOpen] = useState(false);
   const [winners, setWinners] = useState<WinnerPayload[]>([]);
+
+  // state לתמונה
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [imageUploading, setImageUploading] = useState(false);
+  const [imageError, setImageError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
   const {
     data: challenges,
     isLoading,
@@ -135,6 +193,7 @@ export default function AdminChallengesPage() {
     queryKey: ["adminChallenges"],
     queryFn: fetchAdminChallenges,
   });
+
   const createMutation = useMutation({
     mutationFn: createAdminChallenge,
     onSuccess: () => {
@@ -146,9 +205,12 @@ export default function AdminChallengesPage() {
         start_date: "",
         end_date: "",
       });
+      setImagePreview(null);
+      setImageError(null);
       setIsFormOpen(false);
     },
   });
+
   const winnersMutation = useMutation({
     mutationFn: updateWinners,
     onSuccess: () => {
@@ -162,6 +224,7 @@ export default function AdminChallengesPage() {
       setWinners([]);
     },
   });
+
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
   ) => {
@@ -171,25 +234,62 @@ export default function AdminChallengesPage() {
       [name]: value,
     }));
   };
+
+  // בחירת קובץ תמונה מהמחשב
+  const handleImageFileChange = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setImageError(null);
+    try {
+      setImageUploading(true);
+
+      // אופציונלי: תצוגה מוקדמת מהקובץ עצמו
+      const localPreview = URL.createObjectURL(file);
+      setImagePreview(localPreview);
+
+      const url = await uploadImage(file);
+
+      // אחרי שהעלינו לענן – נשמור את ה־URL האמיתי בטופס
+      setForm((prev) => ({
+        ...prev,
+        picture_url: url,
+      }));
+    } catch (err: any) {
+      console.error(err);
+      setImageError(err?.message || "שגיאה בהעלאת התמונה");
+      setImagePreview(null);
+      setForm((prev) => ({ ...prev, picture_url: "" }));
+    } finally {
+      setImageUploading(false);
+      // כדי שאפשר יהיה לבחור שוב את אותו קובץ
+      e.target.value = "";
+    }
+  };
+
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
     if (!form.title || !form.start_date || !form.end_date) {
       alert("חובה למלא לפחות שם אתגר, תאריך התחלה ותאריך סיום");
       return;
     }
+
     createMutation.mutate(form);
   };
+
   const openWinnersModal = (challenge: Challenge) => {
     setSelectedChallenge(challenge);
     setWinners([]);
     setIsWinnersOpen(true);
   };
+
   const closeWinnersModal = () => {
     if (winnersMutation.isPending) return;
     setIsWinnersOpen(false);
     setSelectedChallenge(null);
     setWinners([]);
   };
+
   const selectPlace = (submission: Submission, place: 1 | 2 | 3) => {
     setWinners((prev) => {
       const filtered = prev.filter(
@@ -205,13 +305,17 @@ export default function AdminChallengesPage() {
       ];
     });
   };
+
   const isSelected = (submissionId: string, place: 1 | 2 | 3) =>
     winners.some((w) => w.submission_id === submissionId && w.place === place);
+
   const renderError = () => {
     if (!error) return null;
+
     const msg = error.message || "";
     const isUnauthorized =
       msg.toLowerCase().includes("unauthorized") || msg.includes("403");
+
     if (isUnauthorized) {
       return (
         <div className={styles.errorBox}>
@@ -220,6 +324,7 @@ export default function AdminChallengesPage() {
         </div>
       );
     }
+
     return (
       <div className={styles.errorBox}>
         <p>אירעה שגיאה בטעינת האתגרים.</p>
@@ -227,6 +332,7 @@ export default function AdminChallengesPage() {
       </div>
     );
   };
+
   return (
     <div className={styles.page}>
       <div className={styles.headerRow}>
@@ -236,6 +342,7 @@ export default function AdminChallengesPage() {
             כאן את יכולה ליצור אתגרים חדשים, ולעקוב אחרי מצב האתגרים הקיימים.
           </p>
         </div>
+
         <button
           type="button"
           className={styles.primaryButton}
@@ -244,9 +351,11 @@ export default function AdminChallengesPage() {
           {isFormOpen ? "סגירת טופס יצירה" : "צור אתגר חדש"}
         </button>
       </div>
+
       {isFormOpen && (
         <form className={styles.formCard} onSubmit={handleSubmit}>
           <h2 className={styles.formTitle}>אתגר חדש</h2>
+
           <div className={styles.formRow}>
             <label className={styles.label}>
               שם האתגר
@@ -260,6 +369,7 @@ export default function AdminChallengesPage() {
               />
             </label>
           </div>
+
           <div className={styles.formRow}>
             <label className={styles.label}>
               תיאור
@@ -272,19 +382,54 @@ export default function AdminChallengesPage() {
               />
             </label>
           </div>
+
+          {/* העלאת תמונה מהמחשב במקום כתובת URL */}
           <div className={styles.formRow}>
             <label className={styles.label}>
-              כתובת תמונה (אופציונלי)
-              <input
-                type="text"
-                name="picture_url"
-                value={form.picture_url}
-                onChange={handleChange}
-                className={styles.input}
-                placeholder="https://..."
-              />
+              תמונה לאתגר (אופציונלי)
+              <div className={styles.imageUploadRow}>
+                <button
+                  type="button"
+                  className={styles.secondaryButton}
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={imageUploading}
+                >
+                  {imageUploading
+                    ? "מעלה תמונה…"
+                    : form.picture_url
+                    ? "החלפת תמונה"
+                    : "בחרי תמונה מהמחשב"}
+                </button>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  style={{ display: "none" }}
+                  onChange={handleImageFileChange}
+                />
+                {form.picture_url && !imageUploading && (
+                  <span className={styles.uploadHint}>
+                    התמונה נשמרה בהצלחה
+                  </span>
+                )}
+              </div>
+
+              {(imagePreview || form.picture_url) && (
+                <div className={styles.imagePreviewWrapper}>
+                  <img
+                    src={imagePreview || form.picture_url}
+                    alt="Challenge preview"
+                    className={styles.imagePreview}
+                  />
+                </div>
+              )}
+
+              {imageError && (
+                <div className={styles.errorText}>{imageError}</div>
+              )}
             </label>
           </div>
+
           <div className={styles.formRowGrid}>
             <label className={styles.label}>
               תאריך התחלה
@@ -296,6 +441,7 @@ export default function AdminChallengesPage() {
                 className={styles.input}
               />
             </label>
+
             <label className={styles.label}>
               תאריך סיום
               <input
@@ -307,6 +453,7 @@ export default function AdminChallengesPage() {
               />
             </label>
           </div>
+
           <div className={styles.formActions}>
             <button
               type="button"
@@ -319,11 +466,12 @@ export default function AdminChallengesPage() {
             <button
               type="submit"
               className={styles.primaryButton}
-              disabled={createMutation.isPending}
+              disabled={createMutation.isPending || imageUploading}
             >
               {createMutation.isPending ? "שומרת..." : "שמור אתגר"}
             </button>
           </div>
+
           {createMutation.error && (
             <div className={styles.errorText}>
               {(createMutation.error as Error).message}
@@ -331,10 +479,13 @@ export default function AdminChallengesPage() {
           )}
         </form>
       )}
+
       {isLoading && !error && (
         <div className={styles.loading}>טוען אתגרים…</div>
       )}
+
       {renderError()}
+
       {!isLoading && !error && challenges && (
         <div className={styles.list}>
           {challenges.length === 0 && (
@@ -342,6 +493,7 @@ export default function AdminChallengesPage() {
               עדיין לא יצרת אתגרים. לחצי על &quot;צור אתגר חדש&quot; כדי להתחיל.
             </div>
           )}
+
           {challenges.map((ch) => (
             <div key={ch._id} className={styles.card}>
               <div className={styles.cardHeader}>
@@ -366,12 +518,15 @@ export default function AdminChallengesPage() {
                   />
                 )}
               </div>
+
               <p className={styles.cardDates}>
                 {formatDate(ch.start_date)} — {formatDate(ch.end_date)}
               </p>
+
               {ch.description && (
                 <p className={styles.cardDescription}>{ch.description}</p>
               )}
+
               <div className={styles.cardActions}>
                 <button
                   type="button"
@@ -385,6 +540,7 @@ export default function AdminChallengesPage() {
           ))}
         </div>
       )}
+
       {isWinnersOpen && selectedChallenge && (
         <WinnersModal
           challenge={selectedChallenge}
@@ -398,6 +554,9 @@ export default function AdminChallengesPage() {
     </div>
   );
 }
+
+// ===== Winners modal stays כמו שהיה =====
+
 type WinnersModalProps = {
   challenge: Challenge;
   onClose: () => void;
@@ -414,6 +573,7 @@ type WinnersModalProps = {
     }) => void;
   };
 };
+
 function WinnersModal({
   challenge,
   onClose,
@@ -426,17 +586,20 @@ function WinnersModal({
     queryKey: ["adminChallengeSubmissions", challenge.id],
     queryFn: () => fetchChallengeSubmissions(challenge.id),
   });
+
   const handleSave = () => {
     if (!winners || winners.length === 0) {
       alert("בחרי לפחות זוכה אחד לפני השמירה.");
       return;
     }
+
     winnersMutation.mutate({
       challengeId: challenge.id,
       winners,
       publish: true,
     });
   };
+
   return (
     <div className={styles.modalOverlay}>
       <div className={styles.modal}>
@@ -458,23 +621,30 @@ function WinnersModal({
             ✕
           </button>
         </div>
+
         {isLoading && <div className={styles.loading}>טוען הגשות…</div>}
+
         {error && (
           <div className={styles.errorBox}>
             <p>אירעה שגיאה בטעינת ההגשות.</p>
             <p>{error.message}</p>
           </div>
         )}
+
         {!isLoading && !error && data && data.length === 0 && (
           <div className={styles.emptyState}>
             עדיין אין הגשות לאתגר הזה.
           </div>
         )}
+
         {!isLoading && !error && data && data.length > 0 && (
           <div className={styles.submissionsList}>
             {data.map((sub) => {
               const displayName =
-                sub.user?.username || sub.user?.name || sub.user?.firebase_uid;
+                sub.user?.username ||
+                sub.user?.name ||
+                sub.user?.firebase_uid;
+
               return (
                 <div key={sub._id} className={styles.submissionCard}>
                   {sub.image_url && (
