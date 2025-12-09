@@ -26,7 +26,18 @@ export type Challenge = {
   status?: string;
   start_date?: string;
   end_date?: string;
-  
+  winners_published?: boolean;
+  winners?: {
+    user_id: string;      
+    submission_id: string;  
+    place: number;         
+    user?: {
+      firebase_uid: string;
+      username?: string;
+      name?: string;
+      profil_url?: string;
+    } | null;
+  }[];
 };
 
 type ChallengeSubmission = {
@@ -225,7 +236,7 @@ export default function ChallengesPage() {
               <img
                 src={selectedChallenge.picture_url}
                 alt={selectedChallenge.title}
-                className={styles.modalImage}
+              className={styles.modalImage}
               />
             )}
 
@@ -240,6 +251,51 @@ export default function ChallengesPage() {
                 {selectedChallenge.description}
               </p>
             )}
+
+            {/* הצגת הזוכים במודאל אם פורסמו */}
+            {selectedChallenge.winners_published &&
+              selectedChallenge.winners &&
+              selectedChallenge.winners.length > 0 && (
+                <div className={styles.modalWinners}>
+                  <h3 className={styles.modalWinnersTitle}>Winners</h3>
+                  <ul className={styles.modalWinnersList}>
+                    {selectedChallenge.winners
+                      .slice()
+                      .sort((a, b) => a.place - b.place)
+                      .map((w) => {
+                        const displayName =
+                          w.user?.username ||
+                          w.user?.name ||
+                          w.user?.firebase_uid ||
+                          w.user_id;
+
+                        return (
+                          <li
+                            key={w.submission_id}
+                            className={styles.modalWinnerItem}
+                          >
+                            <span className={styles.modalWinnerPlace}>
+                              Place {w.place}
+                            </span>
+
+                            <div className={styles.modalWinnerUserBox}>
+                              {w.user?.profil_url && (
+                                <img
+                                  src={w.user.profil_url}
+                                  alt={displayName}
+                                  className={styles.modalWinnerAvatar}
+                                />
+                              )}
+                              <span className={styles.modalWinnerUser}>
+                                {displayName}
+                              </span>
+                            </div>
+                          </li>
+                        );
+                      })}
+                  </ul>
+                </div>
+              )}
 
             <button
               className={styles.modalClose}
@@ -393,6 +449,15 @@ function ChallengeCard({
           <p className={styles.cardDescription}>{challenge.description}</p>
         )}
 
+        {/* Badge קטן שמראה שהזוכים כבר פורסמו */}
+        {challenge.winners_published &&
+          challenge.winners &&
+          challenge.winners.length > 0 && (
+            <div className={styles.cardWinnersBadge}>
+              Winners announced
+            </div>
+          )}
+
         {challenge.status !== "ended" && (
           <div className={styles.actionsRow}>
             <button
@@ -471,28 +536,50 @@ function filterByTabAndSearch(
   if (tab === "active") {
     return withDates.filter((c) => {
       if (!c._start || !c._end) return false;
-      return c._start <= now && c._end >= now;
+
+      const started = c._start <= now;
+      const notEndedByTime = c._end >= now;
+      const notEndedByStatus = c.status !== "ended";
+      const noWinners = !c.winners_published;
+
+      return started && notEndedByTime && notEndedByStatus && noWinners;
     });
   }
 
   if (tab === "endingSoon") {
     return withDates.filter((c) => {
       if (!c._start || !c._end) return false;
+
       const diff = (c._end as Date).getTime() - now.getTime();
-      const isActive = c._start <= now && c._end >= now;
-      return isActive && diff <= WEEK_MS && diff >= 0;
+      const isActiveByTime = c._start <= now && c._end >= now;
+      const notEndedByStatus = c.status !== "ended";
+      const noWinners = !c.winners_published;
+
+      return (
+        isActiveByTime &&
+        notEndedByStatus &&
+        noWinners &&
+        diff <= WEEK_MS &&
+        diff >= 0
+      );
     });
   }
 
   if (tab === "ended") {
     return withDates.filter((c) => {
       if (!c._end) return false;
-      return c._end < now;
+
+      const endedByTime = c._end < now;
+      const endedByStatus = c.status === "ended";
+      const hasWinners = !!c.winners_published;
+
+      return endedByTime || endedByStatus || hasWinners;
     });
   }
 
   return withDates;
 }
+
 
 function formatDate(d: Date) {
   return d.toLocaleDateString("en-GB", {
