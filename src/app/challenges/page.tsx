@@ -57,6 +57,7 @@ export default function ChallengesPage() {
   const [joinLoadingId, setJoinLoadingId] = useState<number | null>(null);
   const [selectedChallenge, setSelectedChallenge] =
     useState<Challenge | null>(null);
+  const [showParticipants, setShowParticipants] = useState(false);
 
   const selectedChallengeId = selectedChallenge?.id ?? null;
 
@@ -80,9 +81,7 @@ export default function ChallengesPage() {
     queryFn: getChallenges,
   });
 
-  const {
-    data: joinedSubmissions = [],
-  } = useQuery<ChallengeSubmission[]>({
+  const { data: joinedSubmissions = [] } = useQuery<ChallengeSubmission[]>({
     queryKey: ["joinedChallenges", uid],
     queryFn: () => getUserJoinedChallenges(uid as string),
     enabled: uidReady && !!uid,
@@ -106,6 +105,7 @@ export default function ChallengesPage() {
 
     return { joinedIds: joined, submittedIds: submitted };
   }, [joinedSubmissions]);
+
   const joinMutation = useMutation({
     mutationFn: (challengeId: number) =>
       joinChallenge(challengeId, uid as string),
@@ -116,6 +116,7 @@ export default function ChallengesPage() {
       });
     },
   });
+
   const leaveMutation = useMutation({
     mutationFn: (challengeId: number) =>
       leaveChallenge(challengeId, uid as string),
@@ -127,22 +128,49 @@ export default function ChallengesPage() {
     },
   });
 
+  // === שליפת רשימת המשתתפים (Users) לאתגר שנבחר ===
   const {
-    data: participantsCount = 0,
+    data: participantUsers = [],
     isLoading: loadingParticipants,
   } = useQuery({
-    queryKey: ["challengeParticipants", selectedChallengeId],
+    queryKey: ["challengeParticipantsUsers", selectedChallengeId],
     enabled: !!selectedChallengeId,
     queryFn: async () => {
-      if (!selectedChallengeId) return 0;
+      if (!selectedChallengeId) return [];
+
       const res = await fetch(
         `/api/challenges/${selectedChallengeId}/participants`
       );
       if (!res.ok) {
-        throw new Error("Failed to load participants count");
+        throw new Error("Failed to load participants");
       }
       const data = await res.json();
-      return typeof data.count === "number" ? data.count : 0;
+
+      const rawParticipants = Array.isArray(data.participants)
+        ? data.participants
+        : [];
+
+      const uids: string[] = Array.from(
+        new Set(
+          rawParticipants
+            .map((p: any) => p.user_uid)
+            .filter(
+              (x: any) => typeof x === "string" && x.trim().length > 0
+            )
+        )
+      );
+
+      const users = await Promise.all(
+        uids.map(async (u) => {
+          try {
+            return await getUserByUid(u);
+          } catch {
+            return null;
+          }
+        })
+      );
+
+      return users.filter((u): u is any => u !== null);
     },
   });
 
@@ -203,6 +231,7 @@ export default function ChallengesPage() {
       }
     }
 
+    // fallback אחרון
     window.prompt("Copy this link:", url);
   }
 
@@ -232,6 +261,11 @@ export default function ChallengesPage() {
           return Math.round((done / total) * 100);
         })()
       : null;
+
+  function closeModal() {
+    setSelectedChallenge(null);
+    setShowParticipants(false);
+  }
 
   return (
     <>
@@ -307,7 +341,10 @@ export default function ChallengesPage() {
                 loading={joinLoadingId === ch.id}
                 onToggle={() => handleToggleJoin(ch.id)}
                 userUid={uid ?? null}
-                onOpen={() => setSelectedChallenge(ch)}
+                onOpen={() => {
+                  setSelectedChallenge(ch);
+                  setShowParticipants(false);
+                }}
               />
             ))}
           </div>
@@ -315,10 +352,7 @@ export default function ChallengesPage() {
       </div>
 
       {selectedChallenge && (
-        <div
-          className={styles.modalOverlay}
-          onClick={() => setSelectedChallenge(null)}
-        >
+        <div className={styles.modalOverlay} onClick={closeModal}>
           <div
             className={styles.modal}
             onClick={(e) => {
@@ -358,11 +392,57 @@ export default function ChallengesPage() {
               </div>
             )}
 
-            <p className={styles.modalParticipants}>
-              {loadingParticipants
-                ? "Loading participants…"
-                : `Participants: ${participantsCount}`}
-            </p>
+            {/* כותרת + כפתור לפתיחת רשימת משתתפים */}
+            <div className={styles.modalParticipantsRow}>
+              <span className={styles.modalParticipantsLabel}>
+                {loadingParticipants
+                  ? "Loading participants…"
+                  : participantUsers.length === 0
+                  ? "No participants yet"
+                  : `${participantUsers.length} participants`}
+              </span>
+
+              {!loadingParticipants && participantUsers.length > 0 && (
+                <button
+                  type="button"
+                  className={styles.participantsToggle}
+                  onClick={() =>
+                    setShowParticipants((prev) => !prev)
+                  }
+                >
+                  {showParticipants ? "Hide list" : "Show list"}
+                </button>
+              )}
+            </div>
+
+            {showParticipants &&
+              !loadingParticipants &&
+              participantUsers.length > 0 && (
+                <ul className={styles.participantsList}>
+                  {participantUsers.map((u: any) => {
+                    const displayName =
+                      u.username || u.name || u.firebase_uid;
+
+                    return (
+                      <li
+                        key={u.firebase_uid}
+                        className={styles.participantItem}
+                      >
+                        {u.profil_url && (
+                          <img
+                            src={u.profil_url}
+                            alt={displayName}
+                            className={styles.participantAvatar}
+                          />
+                        )}
+                        <span className={styles.participantName}>
+                          {displayName}
+                        </span>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
 
             {selectedChallenge.description && (
               <p className={styles.modalDescription}>
@@ -427,7 +507,7 @@ export default function ChallengesPage() {
 
               <button
                 className={styles.modalClose}
-                onClick={() => setSelectedChallenge(null)}
+                onClick={closeModal}
               >
                 Close
               </button>

@@ -438,15 +438,12 @@
   font-weight: 500;
 }
 
-/* שורת הכפתורים בתחתית המודאל */
 .modalActions {
   margin-top: 20px;
   display: flex;
   gap: 12px;
   justify-content: flex-end;
 }
-
-/* כפתור שיתוף */
 .modalShare {
   padding: 8px 16px;
   border-radius: 999px;
@@ -492,4 +489,59 @@
   border-radius: 999px;
   background: linear-gradient(90deg, #2563eb, #60a5fa);
   transition: width 0.3s ease-out;
+}
+.modalParticipantsRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 10px 0 6px;
+  gap: 8px;
+}
+
+.modalParticipantsLabel {
+  font-size: 14px;
+  color: #111827;
+  font-weight: 500;
+}
+
+.participantsToggle {
+  font-size: 13px;
+  border: none;
+  background: transparent;
+  color: #2563eb;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 999px;
+}
+
+.participantsToggle:hover {
+  background: #eff6ff;
+}
+
+.participantsList {
+  list-style: none;
+  margin: 0 0 10px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.participantItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #374151;
+}
+
+.participantAvatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  object-fit: cover;
+}
+
+.participantName {
+  font-weight: 500;
 }
