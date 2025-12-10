@@ -58,8 +58,11 @@ export default function ChallengesPage() {
   const [selectedChallenge, setSelectedChallenge] =
     useState<Challenge | null>(null);
 
+  const selectedChallengeId = selectedChallenge?.id ?? null;
+
   const queryClient = useQueryClient();
   const { uid, ready: uidReady } = useFirebaseUid();
+
   const { data: currentUser } = useQuery({
     queryKey: ["currentUser", uid],
     queryFn: () => getUserByUid(uid as string),
@@ -125,6 +128,27 @@ export default function ChallengesPage() {
       queryClient.invalidateQueries({
         queryKey: ["joinedChallenges", uid],
       });
+    },
+  });
+
+  // === כמות משתתפות לאתגר שנבחר במודל ===
+  const {
+    data: participantsCount = 0,
+    isLoading: loadingParticipants,
+  } = useQuery({
+    queryKey: ["challengeParticipants", selectedChallengeId],
+    enabled: !!selectedChallengeId,
+    queryFn: async () => {
+      if (!selectedChallengeId) return 0;
+
+      const res = await fetch(
+        `/api/challenges/${selectedChallengeId}/participants`
+      );
+      if (!res.ok) {
+        throw new Error("Failed to load participants count");
+      }
+      const data = await res.json();
+      return typeof data.count === "number" ? data.count : 0;
     },
   });
 
@@ -260,11 +284,20 @@ export default function ChallengesPage() {
               />
             )}
 
-            <h2 className={styles.modalTitle}>{selectedChallenge.title}</h2>
+            <h2 className={styles.modalTitle}>
+              {selectedChallenge.title}
+            </h2>
 
             {modalDates && (
               <p className={styles.modalDates}>{modalDates}</p>
             )}
+
+            {/* שורה חדשה – כמות משתתפים */}
+            <p className={styles.modalParticipants}>
+              {loadingParticipants
+                ? "Loading participants…"
+                : `Participants: ${participantsCount}`}
+            </p>
 
             {selectedChallenge.description && (
               <p className={styles.modalDescription}>
@@ -304,7 +337,9 @@ export default function ChallengesPage() {
                                   className={styles.modalWinnerAvatar}
                                 />
                               )}
-                              <span className={styles.modalWinnerUser}>
+                              <span
+                                className={styles.modalWinnerUser}
+                              >
                                 {displayName}
                               </span>
                             </div>

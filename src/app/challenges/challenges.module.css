@@ -425,3 +425,9 @@
   background: #1d4ed8;
   transform: translateY(-1px);
 }
+.modalParticipants {
+  font-size: 13px;
+  color: #111827;
+  margin-bottom: 12px;
+  font-weight: 500;
+}
