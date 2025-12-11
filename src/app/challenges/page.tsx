@@ -216,17 +216,17 @@ export default function ChallengesPage() {
   const modalProgress =
     modalStart && modalEnd
       ? (() => {
-          const now = new Date().getTime();
-          const start = modalStart.getTime();
-          const end = modalEnd.getTime();
+        const now = new Date().getTime();
+        const start = modalStart.getTime();
+        const end = modalEnd.getTime();
 
-          if (now <= start) return 0;
-          if (now >= end) return 100;
+        if (now <= start) return 0;
+        if (now >= end) return 100;
 
-          const total = end - start;
-          const done = now - start;
-          return Math.round((done / total) * 100);
-        })()
+        const total = end - start;
+        const done = now - start;
+        return Math.round((done / total) * 100);
+      })()
       : null;
 
   function closeModal() {
@@ -266,25 +266,22 @@ export default function ChallengesPage() {
 
         <div className={styles.tabs}>
           <button
-            className={`${styles.tab} ${
-              tab === "active" ? styles.tabActive : ""
-            }`}
+            className={`${styles.tab} ${tab === "active" ? styles.tabActive : ""
+              }`}
             onClick={() => setTab("active")}
           >
             Active
           </button>
           <button
-            className={`${styles.tab} ${
-              tab === "endingSoon" ? styles.tabActive : ""
-            }`}
+            className={`${styles.tab} ${tab === "endingSoon" ? styles.tabActive : ""
+              }`}
             onClick={() => setTab("endingSoon")}
           >
             Ending soon
           </button>
           <button
-            className={`${styles.tab} ${
-              tab === "ended" ? styles.tabActive : ""
-            }`}
+            className={`${styles.tab} ${tab === "ended" ? styles.tabActive : ""
+              }`}
             onClick={() => setTab("ended")}
           >
             Ended
@@ -363,8 +360,8 @@ export default function ChallengesPage() {
                 {loadingParticipants
                   ? "Loading participants…"
                   : participantUsers.length === 0
-                  ? "No participants yet"
-                  : `${participantUsers.length} participants`}
+                    ? "No participants yet"
+                    : `${participantUsers.length} participants`}
               </span>
 
               {!loadingParticipants && participantUsers.length > 0 && (
@@ -642,9 +639,8 @@ function ChallengeCard({
         {challenge.status !== "ended" && (
           <div className={styles.actionsRow}>
             <button
-              className={`${styles.joinButton} ${
-                isJoined ? styles.joinButtonJoined : ""
-              }`}
+              className={`${styles.joinButton} ${isJoined ? styles.joinButtonJoined : ""
+                }`}
               onClick={(e) => {
                 e.stopPropagation();
                 onToggle();
@@ -654,8 +650,8 @@ function ChallengeCard({
               {loading
                 ? "Saving..."
                 : isJoined
-                ? "Leave Challenge"
-                : "Join Now"}
+                  ? "Leave Challenge"
+                  : "Join Now"}
             </button>
 
             {isJoined && !isSubmitted && (

@@ -1,8 +1,9 @@
 :root {
-  --brand-primary: #2563eb;    
-  --brand-primary-light: #60a5fa; 
-  --brand-primary-soft: #eff6ff;  
+  --brand-primary: #2563eb;
+  --brand-primary-light: #60a5fa;
+  --brand-primary-soft: #eff6ff;
 }
+
 .page {
   min-height: 100vh;
   width: 100%;
@@ -14,9 +15,10 @@
   );
   display: flex;
   justify-content: center;
-   box-sizing: border-box;
-    padding-top: 0;
+  box-sizing: border-box;
+  padding-top: 0;
 }
+
 .pageInner {
   width: 100%;
   max-width: 1180px;
@@ -24,22 +26,25 @@
   padding: 24px 32px 32px;
   box-sizing: border-box;
   font-family: var(--font-main, system-ui, -apple-system, BlinkMacSystemFont);
-    padding-top: 0;
-      padding-right: 96px; 
+  padding-top: 0;
+  padding-right: 96px;
 }
+
 .header {
   display: flex;
   align-items: center;
   gap: 24px;
   margin-bottom: 24px;
-    margin-top: 0;
-  padding-top: 16px; 
+  margin-top: 0;
+  padding-top: 16px;
 }
+
 .headerActions {
   display: flex;
   align-items: center;
   gap: 16px;
 }
+
 .addPhotoButton {
   border-radius: 999px;
   border: none;
@@ -56,7 +61,6 @@
 .main {
   margin-top: 4px;
 }
-
 
 .sectionHeader,
 .feedHeader {
@@ -81,6 +85,8 @@
   cursor: pointer;
   text-decoration: none;
 }
+
+/* STORIES */
 
 .storiesSection {
   margin-bottom: 28px;
@@ -112,7 +118,7 @@
   flex-direction: column;
   align-items: center;
   min-width: 64px;
-    text-decoration: none;
+  text-decoration: none;
   color: inherit;
 }
 
@@ -132,9 +138,11 @@
   align-items: center;
   justify-content: center;
 }
+
 .storyCircleYou {
   background: #e9e0ff;
 }
+
 .storyAvatarFallback {
   width: 100%;
   height: 100%;
@@ -160,9 +168,19 @@
   font-size: 11px;
   color: #5c526b;
 }
-.feedSection {
+/* POP animation for stories */
+.storyItem {
+  transition: transform 0.18s ease;
+}
 
-   margin-top: 24px;
+.storyItem:active {
+  transform: scale(1.08);
+}
+
+/* FEED */
+
+.feedSection {
+  margin-top: 24px;
 }
 
 .tabsWrapper {
@@ -186,9 +204,10 @@
   background: var(--brand-primary-soft);
   color: var(--brand-primary);
 }
+
 .feedGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 24px;
   width: 100%;
 }
@@ -201,13 +220,15 @@
   box-shadow: 0 12px 40px rgba(13, 51, 94, 0.08);
   display: flex;
   flex-direction: column;
-  cursor: pointer;             
+  cursor: pointer;
   transition: transform 0.18s ease, box-shadow 0.18s ease;
 }
+
 .postCard:hover {
-  transform: translateY(-4px);  
+  transform: translateY(-4px);
   box-shadow: 0 18px 48px rgba(13, 51, 94, 0.16);
 }
+
 .postImageWrapper {
   position: relative;
   width: 100%;
@@ -229,12 +250,14 @@
   justify-content: space-between;
   padding: 12px 14px;
 }
+
 .postUser {
   display: flex;
   align-items: center;
   gap: 8px;
-    text-decoration: none; 
+  text-decoration: none;
 }
+
 .postAvatarWrapper {
   position: relative;
   width: 28px;
@@ -242,14 +265,17 @@
   border-radius: 999px;
   overflow: hidden;
 }
+
 .postAvatar {
   object-fit: cover;
 }
+
 .postAuthor {
   font-size: 13px;
   font-weight: 600;
   color: #31273b;
 }
+
 .postStats {
   display: flex;
   align-items: center;
@@ -257,12 +283,17 @@
   font-size: 12px;
   color: #7b708c;
 }
+
 .postLikeIcon {
   font-size: 13px;
 }
+
 .postLikes {
   font-weight: 500;
 }
+
+/* RESPONSIVE */
+
 @media (max-width: 1024px) {
   .pageInner {
     max-width: 100%;
@@ -289,6 +320,7 @@
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
 .storyAvatarWrapper {
   position: relative;
   width: 100%;
@@ -299,4 +331,120 @@
 
 .storyAvatar {
   object-fit: cover;
+}
+/* MOBILE ONLY – FIX IMAGE EXPLOSION */
+@media (max-width: 768px) {
+
+  /* הפיד הופך לעמודה אחת – מסודר ובלי בלגן */
+  .feedGrid {
+    grid-template-columns: 1fr !important;
+    gap: 20px !important;
+  }
+
+  /* מייצבים גובה של התמונה */
+  .postImageWrapper {
+    position: relative;
+    width: 100%;
+    height: 260px !important; /* גובה אחיד, לא ענק ולא מתפוצץ */
+    padding-bottom: 0 !important;
+    overflow: hidden;
+    border-radius: 18px;
+  }
+
+  /* תמונה מתאימה את עצמה למסגרת */
+  .postImage {
+    object-fit: cover !important;
+    width: 100% !important;
+    height: 100% !important;
+    position: absolute;
+    inset: 0;
+  }
+
+  /* כרטיס עצמו */
+  .postCard {
+    border-radius: 20px !important;
+    width: 100% !important;
+    margin: 0 auto;
+  }
+
+  .pageInner {
+    padding: 0 16px !important;
+    box-shadow: none !important;
+  }
+
+  .page {
+    overflow-x: hidden !important;
+  }
+}
+/* ===== MOBILE STORIES GRID ONLY ===== */
+@media (max-width: 768px) {
+  .storiesRow {
+    display: grid !important;
+    grid-template-columns: repeat(4, 1fr) !important;
+    gap: 12px !important;
+    overflow-x: hidden !important;
+    padding: 0 !important;
+  }
+
+  /* כופה מרווח בין שורות */
+  .storyItem {
+    margin-bottom: 6px;
+  }
+}
+/* ======================= */
+/*      SKELETON LOADING   */
+/* ======================= */
+
+.skeletonCard {
+  background: #ffffff;
+  border-radius: 20px;
+  overflow: hidden;
+  padding-bottom: 16px;
+  box-shadow: 0 6px 22px rgba(0,0,0,0.06);
+  animation: skeletonPulse 1.3s ease-in-out infinite;
+}
+
+.skeletonImage {
+  width: 100%;
+  height: 240px;
+  background: #e5e7eb;
+}
+
+.skeletonFooter {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+}
+
+.skeletonCircle {
+  width: 32px;
+  height: 32px;
+  background: #e5e7eb;
+  border-radius: 50%;
+}
+
+.skeletonLine {
+  height: 10px;
+  width: 40%;
+  background: #e5e7eb;
+  border-radius: 6px;
+}
+
+@keyframes skeletonPulse {
+  0% { opacity: 0.5; }
+  50% { opacity: 1; }
+  100% { opacity: 0.5; }
+}
+.storiesRow {
+  display: flex;
+  overflow-x: auto;
+  gap: 12px;
+  padding: 8px 0;
+}
+
+@media (max-width: 768px) {
+  .storiesRow a:nth-child(n+9) {
+    display: none;
+  }
 }

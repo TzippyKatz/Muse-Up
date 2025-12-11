@@ -14,7 +14,6 @@ export default function PostsPage() {
   const [loading, setLoading] = useState(true);
 
   async function loadPosts() {
-    setLoading(true);
     try {
       const res = await fetch(`${base}/api/posts`);
       if (!res.ok) throw new Error("Failed to fetch posts");
@@ -28,6 +27,19 @@ export default function PostsPage() {
   useEffect(() => {
     loadPosts();
   }, []);
+
+  // עדכון לייקים ברשימה לפי הפוסט המעודכן שחזר מהמודל
+  function handlePostUpdate(updatedPost: any) {
+    if (!updatedPost?._id) return;
+
+    setPosts((prev) =>
+      prev.map((p) =>
+        p._id === updatedPost._id
+          ? { ...p, likes_count: updatedPost.likes_count }
+          : p
+      )
+    );
+  }
 
   if (loading) {
     return <div className={styles.page}>Loading posts...</div>;
@@ -80,7 +92,11 @@ export default function PostsPage() {
       </div>
 
       {selectedPostId && (
-        <PostModal postId={selectedPostId} onClose={() => setSelectedPostId(null)} />
+        <PostModal
+          postId={selectedPostId}
+          onClose={() => setSelectedPostId(null)}
+          onPostUpdate={handlePostUpdate}
+        />
       )}
     </main>
   );

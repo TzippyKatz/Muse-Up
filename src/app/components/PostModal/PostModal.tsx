@@ -1,14 +1,18 @@
 "use client";
 
-import { useState, useRef, type FormEvent } from "react";
+import {
+  useState,
+  useRef,
+  type FormEvent,
+} from "react";
 import styles from "./PostModal.module.css";
 
-import { savePost, unsavePost } from "../../../services/postService";
 import { useFirebaseUid } from "../../../hooks/useFirebaseUid";
-
 import useModalUI from "../../../hooks/useModalUI";
+
 import { usePost } from "../../../hooks/usePost";
 import { useComments } from "../../../hooks/useComments";
+import { usePostActions } from "../../../hooks/usePostActions";
 
 import { Share2, Copy, Mail, Send, MessageCircle } from "lucide-react";
 import AiArtCritiqueButton from "../../components/AiArtCritiqueButton";
@@ -16,6 +20,8 @@ import AiArtCritiqueButton from "../../components/AiArtCritiqueButton";
 type Props = {
   onClose: () => void;
   postId: string;
+  /** פוסט מעודכן אחרי לייק/אנלייק – יעודכן ברשימות בחוץ */
+  onPostUpdate?: (updatedPost: any) => void;
 };
 
 type Comment = {
@@ -29,32 +35,27 @@ const EMOJIS = ["😊", "😂", "😍", "🥰", "😎", "🔥", "👍"];
 const DEFAULT_AVATAR =
   "https://res.cloudinary.com/dhxxlwa6n/image/upload/v1763292698/ChatGPT_Image_Nov_16_2025_01_25_54_PM_ndrcsr.png";
 
-export default function PostModal({ onClose, postId }: Props) {
+export default function PostModal({ onClose, postId, onPostUpdate }: Props) {
   const { uid } = useFirebaseUid();
 
-  /* ✨ React Query Data */
   const { data: post, isLoading: loadingPost } = usePost(postId);
   const { data: comments = [], isLoading: loadingComments } = useComments(postId);
 
-  /* ✨ Local UI State */
+  const { addCommentMutation, toggleLikeMutation, toggleSaveMutation } =
+    usePostActions(postId, post?.id);
+
   const [commentText, setCommentText] = useState("");
-  const [sending, setSending] = useState(false);
-
-  const [liked, setLiked] = useState(false);
-  const [likes, setLikes] = useState(post?.likes_count ?? 0);
-  const [savingLike, setSavingLike] = useState(false);
-
+  const [liked, setLiked] = useState<boolean | null>(null);
+  const [likes, setLikes] = useState<number | null>(null);
   const [saved, setSaved] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showShare, setShowShare] = useState(false);
 
-  /* ✨ Refs */
   const commentsRef = useRef<HTMLDivElement | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
   const emojiRef = useRef<HTMLDivElement | null>(null);
   const shareRef = useRef<HTMLDivElement | null>(null);
 
-  /* ✨ UI Hook */
   useModalUI({
     autoFocusRef: inputRef,
     emojiRef,
@@ -65,92 +66,115 @@ export default function PostModal({ onClose, postId }: Props) {
     onCloseShare: () => setShowShare(false),
   });
 
-  /* --------------------------------------------- */
-  async function handleSubmit(e: FormEvent) {
-    e.preventDefault();
-    if (!commentText.trim() || sending) return;
-
-    setSending(true);
-
-    try {
-      await fetch(`/api/comments`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          post_id: postId,
-          user_id: uid,
-          body: commentText,
-        }),
-      });
-
-      setCommentText("");
-    } finally {
-      setSending(false);
-    }
+  /* -------------------------------------------------------
+     INITIALIZE LIKE STATE (פעם ראשונה שהפוסט נטען)
+  -------------------------------------------------------- */
+  if (post && uid && liked === null && likes === null) {
+    const initialLiked = post.liked_by?.includes(uid) ?? false;
+    setLiked(initialLiked);
+    setLikes(post.likes_count ?? 0);
   }
 
-  async function handleLike() {
-    if (savingLike || !post) return;
+  /* ADD COMMENT */
+  function handleSubmit(e: FormEvent) {
+    e.preventDefault();
+    if (!uid || !commentText.trim()) return;
+
+    addCommentMutation.mutate(
+      { userId: uid, body: commentText },
+      {
+        onSuccess: () => setCommentText(""),
+      }
+    );
+  }
+
+  /* LIKE */
+  function handleLike() {
+    if (!uid || !post || liked === null || likes === null) return;
 
     const newLiked = !liked;
-    const delta = newLiked ? 1 : -1;
 
+    // עדכון מיידי ב־UI
     setLiked(newLiked);
-    setLikes((prev) => prev + delta);
-    setSavingLike(true);
+    setLikes((prev) => (prev ?? 0) + (newLiked ? 1 : -1));
 
-    try {
-      await fetch(`/api/posts/${postId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ delta }),
-      });
-    } finally {
-      setSavingLike(false);
-    }
+    const action = newLiked ? "like" : "unlike";
+
+    toggleLikeMutation.mutate(
+      { action },
+      {
+        onSuccess: (updatedPostFromServer: any) => {
+          // אם השרת החזיר likes_count מעודכן – נעדכן ממנו
+          if (typeof updatedPostFromServer?.likes_count === "number") {
+            setLikes(updatedPostFromServer.likes_count);
+          }
+
+          // אם השרת החזיר liked_by – נעדכן לפי זה
+          if (Array.isArray(updatedPostFromServer?.liked_by) && uid) {
+            setLiked(updatedPostFromServer.liked_by.includes(uid));
+          }
+
+          // נעדכן גם את הרשימות החיצוניות (Landing / Posts)
+          if (onPostUpdate) {
+            onPostUpdate(updatedPostFromServer);
+          }
+        },
+        onError: () => {
+          // החזרה למצב הקודם במקרה של שגיאה
+          setLiked(!newLiked);
+          setLikes((prev) => (prev ?? 0) + (newLiked ? -1 : 1));
+        },
+      }
+    );
   }
 
-  async function handleSave() {
+  /* SAVE / UNSAVE */
+  function handleSave() {
     if (!uid || !post?.id) return;
+
     const newSaved = !saved;
     setSaved(newSaved);
 
-    try {
-      if (newSaved) await savePost(uid, post.id);
-      else await unsavePost(uid, post.id);
-    } catch {
-      setSaved(!newSaved);
-    }
+    toggleSaveMutation.mutate(
+      { userId: uid, save: newSaved },
+      {
+        onError: () => setSaved(!newSaved),
+      }
+    );
   }
 
   /* SHARE ACTIONS */
   function copyShareLink() {
     if (!post?.id) return;
-    const url = `${window.location.origin}/landing?postId=${post.id}`;
-    navigator.clipboard.writeText(url);
+    navigator.clipboard.writeText(
+      `${window.location.origin}/landing?postId=${post.id}`
+    );
     setShowShare(false);
   }
 
   function shareWhatsApp() {
     if (!post?.id) return;
-    const url = `${window.location.origin}/landing?postId=${post.id}`;
-    window.open(`https://wa.me/?text=${encodeURIComponent(url)}`);
+    window.open(
+      `https://wa.me/?text=${encodeURIComponent(
+        `${window.location.origin}/landing?postId=${post.id}`
+      )}`
+    );
     setShowShare(false);
   }
 
   function shareEmail() {
     if (!post?.id) return;
-    const url = `${window.location.origin}/landing?postId=${post.id}`;
-    window.location.href = `mailto:?subject=Check this out&body=${encodeURIComponent(url)}`;
+    window.location.href = `mailto:?subject=Check this out&body=${encodeURIComponent(
+      `${window.location.origin}/landing?postId=${post.id}`
+    )}`;
     setShowShare(false);
   }
-
-  /* --------------------------------------------- */
 
   return (
     <div className={styles.bg}>
       <div className={styles.box}>
-        <button className={styles.close} onClick={onClose}>
+        {/* CLOSE BUTTON */}
+        <button className={`btn-icon ${styles.close}`} onClick={onClose}>
           ✕
         </button>
 
@@ -162,16 +186,19 @@ export default function PostModal({ onClose, postId }: Props) {
 
 
 
-        {/* MODAL INNER */}
         <div className={styles.inner}>
           {/* LEFT SIDE */}
           <div className={styles.left}>
-            <h2 className={styles.title}>{loadingPost ? "Loading…" : post?.title}</h2>
+            <h2 className={styles.title}>
+              {loadingPost ? "Loading…" : post?.title}
+            </h2>
+            <p className={styles.body}>
+              {loadingPost ? "Loading…" : post?.body}
+            </p>
 
-            <p className={styles.body}>{loadingPost ? "Loading…" : post?.body}</p>
-
-            {/* ICON BUTTONS */}
+            {/* ICON ACTIONS */}
             <div className={styles.icons}>
+              {/* LIKE BUTTON */}
               <button
                 className={`${styles.iconBtn} ${liked ? styles.active : ""}`}
                 onClick={handleLike}
@@ -179,6 +206,7 @@ export default function PostModal({ onClose, postId }: Props) {
                 {liked ? "❤️" : "♡"}
               </button>
 
+              {/* SAVE BUTTON */}
               <button
                 className={`${styles.iconBtn} ${saved ? styles.saved : ""}`}
                 onClick={handleSave}
@@ -186,7 +214,11 @@ export default function PostModal({ onClose, postId }: Props) {
                 {saved ? "✓" : "＋"}
               </button>
 
-              <button className={styles.iconBtn} onClick={() => setShowShare((v) => !v)}>
+              {/* SHARE */}
+              <button
+                className={`btn-icon ${styles.iconBtn}`}
+                onClick={() => setShowShare((v) => !v)}
+              >
                 <Share2 size={22} />
               </button>
             </div>
@@ -194,21 +226,21 @@ export default function PostModal({ onClose, postId }: Props) {
             {/* SHARE MENU */}
             {showShare && (
               <div ref={shareRef} className={styles.shareMenu}>
-                <button className={styles.shareItem} onClick={copyShareLink}>
+                <button className="btn btn-outline" onClick={copyShareLink}>
                   <Copy size={18} /> Copy link
                 </button>
 
-                <button className={styles.shareItem} onClick={shareWhatsApp}>
+                <button className="btn btn-outline" onClick={shareWhatsApp}>
                   <MessageCircle size={18} /> WhatsApp
                 </button>
 
-                <button className={styles.shareItem} onClick={shareEmail}>
+                <button className="btn btn-outline" onClick={shareEmail}>
                   <Mail size={18} /> Email
                 </button>
 
                 {navigator.share && (
                   <button
-                    className={styles.shareItem}
+                    className="btn btn-outline"
                     onClick={() => {
                       navigator.share({
                         title: post?.title,
@@ -228,7 +260,7 @@ export default function PostModal({ onClose, postId }: Props) {
             <div className={styles.meta}>
               <span>{post?.author?.followers_count ?? 0} followers</span>
               <span className={styles.sep}>|</span>
-              <span>{likes} likes</span>
+              <span>{likes ?? 0} likes</span>
               <span className={styles.sep}>|</span>
 
               <div className={styles.authorBox}>
@@ -267,7 +299,7 @@ export default function PostModal({ onClose, postId }: Props) {
 
               <button
                 type="button"
-                className={styles.emoji}
+                className={`btn-icon ${styles.emoji}`}
                 onClick={() => setShowEmojiPicker((v) => !v)}
               >
                 😊
@@ -280,7 +312,7 @@ export default function PostModal({ onClose, postId }: Props) {
                   <button
                     type="button"
                     key={x}
-                    className={styles.emojiItem}
+                    className="btn-icon"
                     onClick={() => setCommentText((t) => t + x)}
                   >
                     {x}
