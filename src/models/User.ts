@@ -13,6 +13,7 @@ export interface IUser extends Document {
   following_count: number;
   created_at: Date;
   saved_posts?: number[];
+  provider: "password" | "google";
 }
 
 const UserSchema = new Schema<IUser>(
@@ -52,6 +53,7 @@ const UserSchema = new Schema<IUser>(
     },
     role: {
       type: String,
+       enum: ["artist", "admin"], 
       default: "artist",
     },
     followers_count: {
@@ -69,6 +71,11 @@ const UserSchema = new Schema<IUser>(
     saved_posts: {
       type: [Number],
       default: [],
+    },
+    provider: {
+      type: String,
+      enum: ["password", "google"],
+      required: true,
     },
   },
   {

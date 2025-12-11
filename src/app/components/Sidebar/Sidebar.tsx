@@ -142,8 +142,7 @@ export default function Sidebar() {
                 }`}
             />
           </button>
-        </nav>
-
+          
         <div className={styles.spacer} />
 
         <button className={styles.btn} aria-label="Logout"
@@ -155,6 +154,8 @@ export default function Sidebar() {
         >
           <FiLogOut className={styles.icon} />
         </button>
+        </nav>
+
       </aside>
 
       <ArtistSearchDrawer

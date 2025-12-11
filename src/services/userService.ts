@@ -10,6 +10,7 @@ export type User = {
   location?: string;
   followers_count?: number;
   following_count?: number;
+  role?: string;
 };
 
 export type FormUserPayload = {
@@ -20,6 +21,7 @@ export type FormUserPayload = {
   profil_url: string;
   bio: string;
   location: string;
+  provider: "password" | "google";
 };
 
 export type UpdateUserPayload = {
