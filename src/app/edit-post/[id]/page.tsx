@@ -127,7 +127,7 @@ export default function EditPostPage() {
             Cancel
           </button>
 
-          <button type="submit" className="btn btn-primary" disabled={saving}>
+          <button type="submit" className="btn btn-outline" disabled={saving}>
             {saving ? "Saving…" : "Save changes"}
           </button>
         </div>

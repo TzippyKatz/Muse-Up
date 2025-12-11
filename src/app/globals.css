@@ -8,14 +8,12 @@
   --font-main: "Quicksand", sans-serif;
   --btn-radius: 12px;
 }
-
 body {
   margin: 0;
   --font-main: "Quicksand", sans-serif;
   background: var(--bg);
   color: var(--ink);
 }
-
 .layout-body {
   min-height: 100vh;
   background: #f6f8fb;
@@ -23,16 +21,12 @@ body {
   margin: 0;
   --font-main: "Quicksand", sans-serif;
 }
-
 .layout-container-is-root {
   display: grid;
   grid-template-rows: 1fr auto;
   min-height: 100vh;
   padding-right: 88px;
 }
-/* .layout-main {
-  padding: 16px;
-} */
 
 .layout-main-root {
   margin: 0;
@@ -92,11 +86,9 @@ body {
 * {
   -webkit-tap-highlight-color: transparent;
 }
-
 :focus-visible {
   outline: none !important;
 }
-
 :target {
   outline: none !important;
 }

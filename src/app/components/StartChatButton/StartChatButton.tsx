@@ -77,7 +77,7 @@ export default function StartChatButton({
       type="button"
       onClick={handleClick}
       disabled={loading}
-      className="btn btn-primary"
+      className="btn btn-outline"
     >
       {loading ? "Opening..." : label || "Message"}
     </button>
