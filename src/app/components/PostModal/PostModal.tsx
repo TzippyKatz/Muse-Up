@@ -178,10 +178,13 @@ export default function PostModal({ onClose, postId, onPostUpdate }: Props) {
           ✕
         </button>
 
-        {/* AI BUTTON */}
-        <div className={styles.aiTopRight}>
-          {post?.image_url && <AiArtCritiqueButton image_url={post.image_url} />}
-        </div>
+{uid === post?.user_id && post?.image_url && (
+  <div className={styles.aiTopRight}>
+    <AiArtCritiqueButton image_url={post.image_url} />
+  </div>
+)}
+
+
 
         <div className={styles.inner}>
           {/* LEFT SIDE */}

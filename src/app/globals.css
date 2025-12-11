@@ -49,6 +49,7 @@ body {
   border: none;
   transition: 0.2s ease;
 }
+
 .btn-primary {
   background: #38bdf8,;
 }
@@ -56,15 +57,33 @@ body {
 .btn-primary:hover {
   opacity: 0.85;
 }
+
 .btn-outline {
   background: transparent;
   border: 1px solid #d0d3db;
   color: #38bdf8;
 }
 
+.auth-page {
+  min-height: 100vh;
+  background: #f3f4f6;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 32px 16px;
+}
+
+@media (max-width: 480px) {
+    .auth-page {
+        padding-top: 22px;
+        align-items: center;
+    }
+}
+
 .btn-outline:hover {
   background: rgba(0, 0, 0, 0.03);
 }
+
 .btn-subtle {
   background: transparent;
   color: #121826;

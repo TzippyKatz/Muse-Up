@@ -32,7 +32,7 @@ async function getLandingData(): Promise<{
     visibility: "public",
   })
     .sort({ created_at: -1 })
-    .limit(10)
+    .limit(30)
     .lean();
 
   // 2) Load all users (map for fast lookup)
